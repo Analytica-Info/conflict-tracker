@@ -867,8 +867,9 @@ function initMap() {
 }
 
 function loadMap() {
-  apiFetch('/api/heatmap').then(data => {
-    if (!Array.isArray(data) || data.length === 0) {
+  apiFetch('/api/heatmap').then(raw => {
+    const data = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.points) ? raw.points : []);
+    if (data.length === 0) {
       document.getElementById('map-badge').textContent = 'NO DATA';
       return;
     }
@@ -877,18 +878,13 @@ function loadMap() {
     mapMarkers = [];
 
     data.forEach(point => {
-      if (point.lat == null || point.lng == null) return;
-      const color = sevColor(point.severity);
-      const r = Math.min(18, Math.max(6, (point.intensity || 5) * 1.5));
-
-      const circle = L.circleMarker([point.lat, point.lng], {
-        radius: r,
-        fillColor: color,
-        color: color,
-        weight: 1,
-        opacity: 0.9,
-        fillOpacity: 0.55
-      });
+      // points are [lat, lng, intensity] arrays
+      const lat = Array.isArray(point) ? point[0] : point.lat;
+      const lng = Array.isArray(point) ? point[1] : point.lng;
+      const intensity = Array.isArray(point) ? point[2] : (point.intensity || 0.5);
+      if (lat == null || lng == null) return;
+      const color = intensity > 0.7 ? '#ff3333' : intensity > 0.4 ? '#ff8c00' : '#ffc400';
+      const r = Math.min(18, Math.max(6, intensity * 20));
 
       const pulseIcon = L.divIcon({
         className: '',
@@ -900,12 +896,12 @@ function loadMap() {
         iconAnchor: [r, r]
       });
 
-      const marker = L.marker([point.lat, point.lng], { icon: pulseIcon });
+      const marker = L.marker([lat, lng], { icon: pulseIcon });
       marker.bindPopup(
         `<div style="background:#080d1a;color:#e0e4ef;padding:8px 12px;border:1px solid #131926;border-radius:3px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;">
-          <strong style="color:${color}">${escHtml(point.label || 'Event')}</strong><br>
-          <span style="font-size:10px;color:#7a8aaa;">Severity: ${escHtml(point.severity || 'unknown')}</span><br>
-          <span style="font-size:10px;color:#7a8aaa;">Intensity: ${point.intensity || 'N/A'}</span>
+          <strong style="color:${color}">Incident</strong><br>
+          <span style="font-size:10px;color:#7a8aaa;">Intensity: ${(intensity*10).toFixed(1)}/10</span><br>
+          <span style="font-size:10px;color:#7a8aaa;">Coords: ${lat.toFixed(2)}, ${lng.toFixed(2)}</span>
         </div>`,
         { className: 'dark-popup' }
       );
@@ -974,27 +970,27 @@ function renderCountries(countryAverages) {
     return;
   }
 
-  const sorted = [...countryAverages].sort((a,b) => (b.avgSeverity||0) - (a.avgSeverity||0));
+  const sorted = [...countryAverages].sort((a,b) => (b.avg_severity||0) - (a.avg_severity||0));
   document.getElementById('country-count-badge').textContent = sorted.length + ' COUNTRIES';
 
   const maxScore = 10;
   list.innerHTML = sorted.map(c => {
-    const pct = Math.min(100, ((c.avgSeverity||0) / maxScore) * 100);
-    const color = scoreColor(c.avgSeverity);
-    const arrow = c.avgSeverity >= 7 ? '▲' : c.avgSeverity >= 4 ? '►' : '▼';
-    const arrowColor = c.avgSeverity >= 7 ? '#ff3333' : c.avgSeverity >= 4 ? '#ff8c00' : '#4a7a4a';
+    const pct = Math.min(100, ((c.avg_severity||0) / maxScore) * 100);
+    const color = scoreColor(c.avg_severity);
+    const arrow = c.avg_severity >= 7 ? '▲' : c.avg_severity >= 4 ? '►' : '▼';
+    const arrowColor = c.avg_severity >= 7 ? '#ff3333' : c.avg_severity >= 4 ? '#ff8c00' : '#4a7a4a';
     return `<div class="country-item">
       <div class="country-name">${escHtml(c.country)}</div>
       <div class="country-bar-wrap">
         <div class="country-bar" style="width:${pct}%;background:${color}"></div>
       </div>
-      <div class="country-score" style="color:${color}">${(c.avgSeverity||0).toFixed(1)}</div>
+      <div class="country-score" style="color:${color}">${(c.avg_severity||0).toFixed(1)}</div>
       <div class="country-arrow" style="color:${arrowColor}">${arrow}</div>
     </div>`;
   }).join('');
 
   // Update active zones stat
-  const activeZones = sorted.filter(c => (c.avgSeverity||0) > 5).length;
+  const activeZones = sorted.filter(c => (c.avg_severity||0) > 5).length;
   document.getElementById('stat-zones').textContent = activeZones;
 }
 
@@ -1131,7 +1127,7 @@ function loadActors() {
   apiFetch('/api/analytics').then(data => {
     analyticsCache = data;
     renderActors(data.topActors);
-    renderCountries(data.countryAverages);
+    renderCountries(data.countryAvg);
     renderAnalytics(data);
   }).catch(() => {
     document.getElementById('actor-svg-wrap').innerHTML = '<div class="no-data">No data available</div>';
@@ -1143,8 +1139,8 @@ function loadActors() {
 function renderAnalytics(data) {
   const wrap = document.getElementById('analytics-canvas-wrap');
 
-  const countryAverages = Array.isArray(data.countryAverages) ? data.countryAverages.slice(0,8) : [];
-  const trends = Array.isArray(data.trends) ? data.trends.slice(-14) : [];
+  const countryAverages = Array.isArray(data.countryAvg) ? data.countryAvg.slice(0,8) : [];
+  const trends = Array.isArray(data.trend) ? data.trend.slice(-14) : [];
 
   if (countryAverages.length === 0 && trends.length === 0) {
     wrap.innerHTML = '<div class="no-data">No analytics data available</div>';
@@ -1177,10 +1173,10 @@ function renderAnalytics(data) {
       const labelW = 70;
       const maxVal = 10;
 
-      const sorted = [...countryAverages].sort((a,b) => (b.avgSeverity||0) - (a.avgSeverity||0));
+      const sorted = [...countryAverages].sort((a,b) => (b.avg_severity||0) - (a.avg_severity||0));
       sorted.forEach((c, i) => {
         const y = i * (barHeight + gap);
-        const val = c.avgSeverity || 0;
+        const val = c.avg_severity || 0;
         const barW = ((W - labelW - 30) * val) / maxVal;
         const color = scoreColor(val);
 
@@ -1246,7 +1242,7 @@ function renderAnalytics(data) {
       ctx.beginPath();
       trends.forEach((p, i) => {
         const x = pad.l + (i / (trends.length - 1)) * gW;
-        const y = pad.t + gH - ((p.avgSeverity||0) / maxV) * gH;
+        const y = pad.t + gH - ((p.avg_severity||0) / maxV) * gH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       });
       // Close fill
@@ -1265,7 +1261,7 @@ function renderAnalytics(data) {
       ctx.lineJoin = 'round';
       trends.forEach((p, i) => {
         const x = pad.l + (i / (trends.length - 1)) * gW;
-        const y = pad.t + gH - ((p.avgSeverity||0) / maxV) * gH;
+        const y = pad.t + gH - ((p.avg_severity||0) / maxV) * gH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       });
       ctx.stroke();
@@ -1282,21 +1278,21 @@ function renderAnalytics(data) {
 
   // Update avg severity stat
   if (countryAverages.length > 0) {
-    const avg = countryAverages.reduce((s,c) => s + (c.avgSeverity||0), 0) / countryAverages.length;
+    const avg = countryAverages.reduce((s,c) => s + (c.avg_severity||0), 0) / countryAverages.length;
     document.getElementById('stat-avg-sev').textContent = avg.toFixed(1);
   }
 }
 
 function loadAnalytics() {
   if (analyticsCache) {
-    renderCountries(analyticsCache.countryAverages);
+    renderCountries(analyticsCache.countryAvg);
     renderAnalytics(analyticsCache);
     if (analyticsCache.topActors) renderActors(analyticsCache.topActors);
     return;
   }
   apiFetch('/api/analytics').then(data => {
     analyticsCache = data;
-    renderCountries(data.countryAverages);
+    renderCountries(data.countryAvg);
     renderAnalytics(data);
     if (data.topActors) renderActors(data.topActors);
   }).catch(() => {
@@ -1307,14 +1303,14 @@ function loadAnalytics() {
 
 // ── SOURCE MONITOR ─────────────────────────────────────────────────────────
 
-function renderSources(sourceCoverage) {
+function renderSources(sourcesStats) {
   const list = document.getElementById('sources-list');
-  if (!sourceCoverage || typeof sourceCoverage !== 'object') {
+  if (!Array.isArray(sourcesStats) || sourcesStats.length === 0) {
     list.innerHTML = '<div class="no-data">No source data available</div>';
     return;
   }
 
-  const entries = Object.entries(sourceCoverage).sort((a,b) => (b[1].count||0) - (a[1].count||0));
+  const entries = sourcesStats.sort((a,b) => (b.count||0) - (a.count||0));
   if (entries.length === 0) {
     list.innerHTML = '<div class="no-data">No sources found</div>';
     return;
@@ -1322,27 +1318,23 @@ function renderSources(sourceCoverage) {
 
   document.getElementById('src-monitor-badge').textContent = entries.length + ' SOURCES';
 
-  list.innerHTML = entries.map(([name, info]) => {
-    const lastUpd = info.lastUpdated || info.lastUpdate || null;
-    const diffMin = lastUpd ? Math.floor((Date.now() - new Date(lastUpd).getTime()) / 60000) : null;
-    let dotClass = 'active', statusText = 'Active';
-    if (diffMin === null) { dotClass = 'slow'; statusText = 'Unknown'; }
-    else if (diffMin > 30) { dotClass = 'down'; statusText = diffMin + 'm ago'; }
-    else if (diffMin > 10) { dotClass = 'slow'; statusText = diffMin + 'm ago'; }
-    else { statusText = diffMin < 1 ? 'Just now' : diffMin + 'm ago'; }
+  list.innerHTML = entries.map(src => {
+    const dotClass = src.count > 0 ? 'active' : 'slow';
+    const statusText = src.count + ' articles';
+    const avgSev = src.avg_severity ? src.avg_severity.toFixed(1) : '—';
 
     return `<div class="source-item">
       <div class="src-dot ${dotClass}"></div>
-      <div class="src-name">${escHtml(name)}</div>
-      <div class="src-count">${info.count||0}</div>
-      <div class="src-time">${statusText}</div>
+      <div class="src-name">${escHtml(src.name)}</div>
+      <div class="src-count">${src.count||0}</div>
+      <div class="src-time">sev ${avgSev}</div>
     </div>`;
   }).join('');
 }
 
 function loadSources() {
   apiFetch('/api/analysis').then(data => {
-    renderSources(data.sourceCoverage);
+    renderSources(data.sourcesStats);
   }).catch(() => {
     document.getElementById('sources-list').innerHTML = '<div class="no-data">No data available</div>';
   });
