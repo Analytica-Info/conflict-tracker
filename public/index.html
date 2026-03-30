@@ -774,6 +774,12 @@ canvas.chart-canvas { width: 100%; display: block; }
 // ── UTILITIES ──────────────────────────────────────────────────────────────
 
 function sevColor(sev) {
+  if (typeof sev === 'number') {
+    if (sev >= 8) return '#ff3333';
+    if (sev >= 6) return '#ff8c00';
+    if (sev >= 4) return '#ffc400';
+    return '#4a7a4a';
+  }
   const s = (sev || '').toLowerCase();
   if (s === 'critical') return '#ff3333';
   if (s === 'high') return '#ff8c00';
@@ -782,6 +788,12 @@ function sevColor(sev) {
 }
 
 function sevClass(sev) {
+  if (typeof sev === 'number') {
+    if (sev >= 8) return 'critical';
+    if (sev >= 6) return 'high';
+    if (sev >= 4) return 'medium';
+    return 'low';
+  }
   const s = (sev || '').toLowerCase();
   if (s === 'critical') return 'critical';
   if (s === 'high') return 'high';
@@ -1003,25 +1015,27 @@ function renderFeed() {
   const list = document.getElementById('feed-list');
   let items = feedItems;
   if (feedFilter !== 'ALL') {
-    items = feedItems.filter(a => (a.severity||'').toLowerCase() === feedFilter.toLowerCase());
+    items = feedItems.filter(a => (a.severity_label||'').toLowerCase() === feedFilter.toLowerCase());
   }
   if (items.length === 0) {
     list.innerHTML = '<div class="no-data">No items for this filter</div>';
     return;
   }
   list.innerHTML = items.map((a, i) => {
-    const sc = sevClass(a.severity);
+    const label = a.severity_label || sevClass(a.severity).toUpperCase();
+    const sc = sevClass(a.severity_label || a.severity);
     const actors = Array.isArray(a.actors) ? a.actors.slice(0,2).join(', ') : '';
+    const countryStr = Array.isArray(a.countries) ? a.countries.slice(0,1).join('') : (a.country || actors);
     return `<div class="feed-item sev-${sc}" data-id="${escHtml(a._id||i)}">
       <div class="feed-item-header">
-        <span class="sev-badge ${sc}">${escHtml(a.severityLabel || a.severity || 'UNKNOWN')}</span>
-        <span style="font-size:9px;color:#4a5a70">${escHtml(a.country||actors)}</span>
+        <span class="sev-badge ${sc}">${escHtml(label)}</span>
+        <span style="font-size:9px;color:#4a5a70">${escHtml(countryStr)}</span>
       </div>
       <div class="feed-title">${escHtml(a.title)}</div>
       <div class="feed-meta">
         <span class="feed-source">${escHtml(a.source)}</span>
-        <span class="feed-score" style="color:${scoreColor(a.severityScore||a.severity)}">${a.severityScore != null ? a.severityScore.toFixed(1) : ''}</span>
-        <span>${timeAgo(a.publishedAt)}</span>
+        <span class="feed-score" style="color:${scoreColor(a.severity)}">${a.severity != null ? parseFloat(a.severity).toFixed(1) : ''}</span>
+        <span>${timeAgo(a.published_at || a.publishedAt)}</span>
       </div>
     </div>`;
   }).join('');
@@ -1039,14 +1053,14 @@ function loadFeed() {
     renderFeed();
 
     // Check for critical alert
-    const critical = feedItems.find(a => (a.severity||'').toLowerCase() === 'critical');
+    const critical = feedItems.find(a => (a.severity_label||'').toLowerCase() === 'critical' || a.severity >= 9);
     if (critical) {
       document.getElementById('alert-text').textContent = critical.title;
       document.getElementById('alert-banner').style.display = 'flex';
     }
 
     // Update critical today stat
-    const critCount = feedItems.filter(a => (a.severity||'').toLowerCase() === 'critical').length;
+    const critCount = feedItems.filter(a => (a.severity_label||'').toLowerCase() === 'critical' || a.severity >= 9).length;
     document.getElementById('stat-critical').textContent = critCount;
   }).catch(() => {
     document.getElementById('feed-list').innerHTML = '<div class="no-data">No data available</div>';
@@ -1343,27 +1357,33 @@ function loadSources() {
 // ── TIMELINE ───────────────────────────────────────────────────────────────
 
 function loadTimeline() {
-  apiFetch('/api/timeline').then(data => {
+  apiFetch('/api/timeline').then(raw => {
     const list = document.getElementById('timeline-list');
-    if (!Array.isArray(data) || data.length === 0) {
+    // API may return array or dict keyed by date/id
+    let data = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+    // If items are themselves dicts of articles, flatten one level
+    data = data.map(v => (v && typeof v === 'object' && !v.title && Array.isArray(v.articles)) ? v.articles[0] : v).filter(Boolean);
+    if (data.length === 0) {
       list.innerHTML = '<div class="no-data">No timeline data available</div>';
       return;
     }
 
     document.getElementById('timeline-badge').textContent = data.length + ' EVENTS';
-    const sorted = [...data].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+    const sorted = [...data].sort((a,b) => new Date(b.date||b.published_at||0) - new Date(a.date||a.published_at||0));
 
     list.innerHTML = sorted.map(item => {
-      const color = sevColor(item.severity);
+      const sev = item.severity_label || item.severity;
+      const color = sevColor(sev);
       const actors = Array.isArray(item.actors) ? item.actors : [];
       const countries = Array.isArray(item.countries) ? item.countries : [];
       const tags = [...actors, ...countries].slice(0,4);
+      const dateStr = item.date || item.published_at || '';
 
       return `<div class="timeline-item">
         <div class="timeline-dot" style="background:${color};box-shadow:0 0 5px ${color}"></div>
         <div class="timeline-content">
-          <div class="timeline-date">${fmtDate(item.date)}</div>
-          <div class="timeline-title">${escHtml(item.title)}</div>
+          <div class="timeline-date">${fmtDate(dateStr)}</div>
+          <div class="timeline-title">${escHtml(item.title || item.summary || '')}</div>
           ${tags.length ? `<div class="timeline-tags">${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
@@ -1378,23 +1398,30 @@ function loadTimeline() {
 function loadBias() {
   apiFetch('/api/bias').then(data => {
     const list = document.getElementById('bias-list');
-    const perspectives = Array.isArray(data.perspectives) ? data.perspectives : [];
+    // API returns {sources: [{name, region, perspective, count, avg_severity, top_actors}]}
+    const perspectives = Array.isArray(data.sources) ? data.sources :
+                         (Array.isArray(data.perspectives) ? data.perspectives : []);
     if (perspectives.length === 0) {
       list.innerHTML = '<div class="no-data">No bias data available</div>';
       return;
     }
 
     list.innerHTML = perspectives.map(p => {
+      const name = p.name || p.source || '';
+      const perspective = p.perspective || p.region || '';
       const biasScore = typeof p.biasScore === 'number' ? p.biasScore :
-        (p.perspective || '').toLowerCase().includes('pro-war') ? 75 :
-        (p.perspective || '').toLowerCase().includes('critical') ? 65 :
-        (p.perspective || '').toLowerCase().includes('neutral') ? 45 : 50;
+        perspective.toLowerCase().includes('pro-war') ? 75 :
+        perspective.toLowerCase().includes('critical') ? 65 :
+        perspective.toLowerCase().includes('neutral') ? 45 :
+        perspective.toLowerCase().includes('western') ? 60 :
+        perspective.toLowerCase().includes('middle east') ? 55 : 50;
       const pct = Math.min(100, Math.max(5, biasScore));
+      const avgSev = p.avg_severity ? parseFloat(p.avg_severity).toFixed(1) : null;
 
       return `<div class="bias-item">
-        <div class="bias-source-name">${escHtml(p.source)}</div>
-        ${p.perspective ? `<div class="bias-perspective">${escHtml(p.perspective)}</div>` : ''}
-        ${p.emphasis ? `<div class="bias-emphasis">${escHtml(p.emphasis)}</div>` : ''}
+        <div class="bias-source-name">${escHtml(name)}</div>
+        ${perspective ? `<div class="bias-perspective">${escHtml(perspective)}</div>` : ''}
+        ${avgSev ? `<div class="bias-emphasis" style="color:${scoreColor(p.avg_severity)}">Avg severity: ${avgSev}</div>` : ''}
         <div class="bias-bar-wrap">
           <div class="bias-bar" style="width:${pct}%"></div>
         </div>
@@ -1458,7 +1485,7 @@ function connectSSE() {
           });
 
           // Check for new critical
-          const newCritical = brandNew.find(a => (a.severity||'').toLowerCase() === 'critical');
+          const newCritical = brandNew.find(a => (a.severity_label||'').toLowerCase() === 'critical' || a.severity >= 9);
           if (newCritical) {
             document.getElementById('alert-text').textContent = newCritical.title;
             document.getElementById('alert-banner').style.display = 'flex';
