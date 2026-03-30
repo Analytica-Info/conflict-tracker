@@ -2,401 +2,1531 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Conflict Tracker v4</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Middle East Conflict Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#05080f;color:#e0e4ef;font-family:'Segoe UI',Arial,sans-serif;font-size:13px}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-.topbar{background:#080d1a;border-bottom:2px solid #cc2222;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:17px;font-weight:700;letter-spacing:3px;color:#fff}
-.logo em{color:#cc2222;font-style:normal}
-.live-badge{display:flex;align-items:center;gap:7px;background:rgba(204,34,34,.18);border:1px solid #cc2222;padding:4px 12px;border-radius:3px;font-size:11px;font-weight:700;letter-spacing:2px;color:#ff4444}
-.dot{width:8px;height:8px;background:#ff4444;border-radius:50%;box-shadow:0 0 8px #ff4444;animation:blink 1.4s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.tinfo{font-size:12px;color:#7a8aaa}
-.tinfo strong{color:#b0bdd0}
+:root {
+  --bg: #05080f;
+  --panel: #080d1a;
+  --border: #131926;
+  --red: #cc2222;
+  --red-bright: #ff3333;
+  --orange: #ff8c00;
+  --amber: #ffc400;
+  --text: #e0e4ef;
+  --text-dim: #7a8aaa;
+  --text-muted: #3a4560;
+}
 
-.alert{background:#120506;border-bottom:1px solid #cc2222;padding:7px 24px;display:flex;align-items:center;gap:14px}
-.atag{background:#cc2222;color:#fff;padding:3px 12px;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:2px;white-space:nowrap}
-.atext{font-size:11px;color:#ff9999}
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
 
-.stats{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #131926}
-.stat{padding:14px 18px;text-align:center;border-right:1px solid #131926;cursor:pointer}
-.stat:hover{background:#0b1020}
-.sv{font-size:28px;font-weight:700;line-height:1}
-.sv.r{color:#ff3333}.sv.o{color:#ff8c00}.sv.y{color:#ffc400}.sv.w{color:#c8d0e0}
-.sl{font-size:10px;color:#4a5568;letter-spacing:1px;margin-top:4px;text-transform:uppercase}
-.ss{font-size:9px;color:#ff3333;margin-top:2px}
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2a3a50; }
 
-.grid{display:grid;grid-template-columns:2fr 1fr 1fr 290px;grid-template-rows:330px 290px 250px;gap:4px;padding:4px}
-.panel{background:#080d1a;border:1px solid #131926;border-radius:4px;display:flex;flex-direction:column;overflow:hidden}
-.ph{background:#060a14;border-bottom:1px solid #131926;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.ph-t{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc3333}
-.ph-t.d{color:#3a4a66}
-.ph-b{font-size:9px;color:#2a3a55}
-.pb{flex:1;overflow:hidden}
+/* ── TOP BAR ── */
+#topbar {
+  background: var(--panel);
+  border-bottom: 2px solid var(--red);
+  padding: 10px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.logo {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  text-transform: uppercase;
+}
+.logo em { color: var(--red); font-style: normal; }
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(204,34,34,.15);
+  border: 1px solid var(--red);
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ff5555;
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  background: #ff4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff4444;
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
 
-/* MAP */
-.map-panel{grid-column:1/2;grid-row:1/2}
-.mapbg{width:100%;height:100%;background:#050e08;position:relative;overflow:hidden}
-.mapbg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:50px 50px;pointer-events:none}
-.land{position:absolute;background:rgba(20,55,30,.75);border:1px solid rgba(40,100,50,.5)}
-.wlbl{position:absolute;font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(80,140,220,.5);text-transform:uppercase}
-.mk{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:10}
-.mk:hover .mk-lbl{color:#fff}
-.mkc{border-radius:50%;position:relative}
-.mkc::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid currentColor;opacity:.5;animation:rng 2s infinite ease-out}
-.mkc::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:1px solid currentColor;opacity:.25;animation:rng 2s .5s infinite ease-out}
-@keyframes rng{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.4);opacity:0}}
-.mk-lbl{margin-top:6px;font-size:10px;font-weight:600;background:rgba(5,8,15,.92);padding:2px 7px;border-radius:2px;white-space:nowrap;pointer-events:none}
-.map-legend{position:absolute;bottom:12px;left:12px;background:rgba(5,8,15,.92);border:1px solid #131926;padding:7px 12px;border-radius:3px;display:flex;gap:14px}
-.lg{display:flex;align-items:center;gap:6px;font-size:10px;color:#8090aa}
-.lgd{width:8px;height:8px;border-radius:50%}
+.topbar-info { font-size: 11px; color: var(--text-dim); }
+.topbar-info strong { color: #b0bdd0; }
+#utc-clock { font-size: 12px; color: var(--text-dim); font-family: monospace; letter-spacing: 1px; }
 
-/* GAUGE */
-.gauge-panel{grid-column:2/3;grid-row:1/2}
-.gi{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:11px;padding:16px}
-.g-status{font-size:11px;font-weight:700;letter-spacing:3px;color:#ff3333}
-.g-num{font-size:80px;font-weight:700;color:#ff3333;line-height:1;text-shadow:0 0 40px rgba(255,51,51,.4)}
-.g-ends{display:flex;justify-content:space-between;font-size:9px;color:#3a4a66;margin-bottom:5px;width:100%}
-.g-track{height:8px;background:#131926;border-radius:4px;position:relative;width:100%}
-.g-fill{height:100%;width:87%;border-radius:4px;background:linear-gradient(90deg,#22aa55,#ffc400,#ff8c00,#ff3333)}
-.g-needle{position:absolute;top:-6px;left:87%;transform:translateX(-50%);width:3px;height:20px;background:#fff;border-radius:2px;box-shadow:0 0 6px #fff}
-.gsigs{width:100%;display:flex;flex-direction:column;gap:7px}
-.gsig{display:flex;align-items:flex-start;gap:8px;font-size:10px;color:#7a8aaa;line-height:1.4}
-.gsd{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+/* ── ALERT BANNER ── */
+#alert-banner {
+  background: #120407;
+  border-bottom: 1px solid var(--red);
+  padding: 6px 22px;
+  display: none;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.alert-tag {
+  background: var(--red);
+  color: #fff;
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  border-radius: 2px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.alert-text { font-size: 11px; color: #ff9999; }
 
-/* COUNTRY */
-.cty-panel{grid-column:3/4;grid-row:1/2}
-.crow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #0d1220;cursor:pointer;transition:background .15s}
-.crow:hover{background:#0e1525}
-.cn{width:64px;font-size:11px;color:#8090aa;font-weight:600}
-.cb{flex:1;height:4px;background:#131926;border-radius:2px}
-.cbf{height:100%;border-radius:2px}
-.cs{width:30px;text-align:right;font-size:13px;font-weight:700}
-.ct{width:16px;text-align:center;font-size:14px;font-weight:700}
+/* ── STATS ROW ── */
+#stats-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stat-card {
+  padding: 12px 16px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .15s;
+}
+.stat-card:last-child { border-right: none; }
+.stat-card:hover { background: #0a0f1c; }
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-value.red { color: var(--red-bright); }
+.stat-value.orange { color: var(--orange); }
+.stat-value.amber { color: var(--amber); }
+.stat-value.white { color: #c8d0e0; }
+.stat-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+.stat-sub { font-size: 9px; color: var(--red); margin-top: 2px; }
 
-/* FEED */
-.feed-panel{grid-column:4/5;grid-row:1/4}
-.filters{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#060a14;border-bottom:1px solid #131926;flex-shrink:0}
-.fbtn{padding:5px 11px;font-size:10px;border:1px solid #1e2d44;border-radius:3px;cursor:pointer;background:transparent;color:#5a6a88;font-family:'Segoe UI',Arial,sans-serif;transition:all .15s;letter-spacing:.5px;font-weight:500}
-.fbtn:hover{border-color:#4a5a78;color:#a0b0cc;background:rgba(255,255,255,.03)}
-.fbtn.on{background:rgba(204,34,34,.2);border-color:#cc2222;color:#ff6666;font-weight:700}
-.feed-list{flex:1;overflow-y:auto;padding:8px}
-.feed-list::-webkit-scrollbar{width:3px}
-.feed-list::-webkit-scrollbar-thumb{background:#1e2d44;border-radius:2px}
-.fi{padding:9px 10px 9px 12px;margin-bottom:4px;border-left:3px solid;border-radius:0 3px 3px 0;cursor:pointer;transition:background .15s;display:block}
-.fi:hover{background:#0c1220}
-.fi.cr{border-left-color:#ff3333}
-.fi.hi{border-left-color:#ff8c00}
-.fi.md{border-left-color:#ffc400}
-.fi.lo{border-left-color:#2a3a55}
-.fi-sev{font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
-.fi-sev.cr{color:#ff3333}.fi-sev.hi{color:#ff8c00}.fi-sev.md{color:#ffc400}.fi-sev.lo{color:#3a5070}
-.fi-t{font-size:11px;color:#b0bdd0;line-height:1.4;margin-bottom:4px}
-.fi-m{font-size:9px;color:#2a3a55}
-.fi[hidden]{display:none}
+/* ── MAIN GRID WRAPPER ── */
+#main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+#grid-area {
+  flex: 1;
+  overflow: hidden;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 280px;
+  grid-template-rows: 330px 290px 250px;
+  gap: 6px;
+}
 
-/* NETWORK */
-.net-panel{grid-column:1/2;grid-row:2/3}
-.net-area{width:100%;height:100%;position:relative}
-.net-area svg{position:absolute;inset:0;width:100%;height:100%}
-.anode{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;transform:translate(-50%,-50%);cursor:pointer;color:#e0e4ef;transition:transform .15s}
-.anode:hover{transform:translate(-50%,-50%) scale(1.15)}
-.anode-lbl{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:5px;font-size:9px;white-space:nowrap;color:#6a7a99;font-weight:600;pointer-events:none}
+/* ── PANEL BASE ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.panel-title em { color: var(--red); font-style: normal; }
+.panel-badge {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+.panel-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+.loading-placeholder {
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+  animation: fadePulse 2s ease-in-out infinite;
+}
+@keyframes fadePulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+.no-data { padding: 20px; color: var(--text-muted); font-size: 11px; text-align: center; }
 
-/* ANALYTICS */
-.anal-panel{grid-column:2/3;grid-row:2/3}
-.chart-lbl{font-size:9px;color:#3a4a66;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;padding:0 14px}
-.bars-wrap{display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 14px}
-.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
-.bf{width:100%;border-radius:2px 2px 0 0;min-height:4px;transition:height .3s}
-.blbl{font-size:9px;color:#3a4a66}
+/* ── GRID POSITIONS ── */
+#panel-map    { grid-column: 1; grid-row: 1; }
+#panel-gauge  { grid-column: 2; grid-row: 1; }
+#panel-countries { grid-column: 3; grid-row: 1; }
+#panel-feed   { grid-column: 4; grid-row: 1 / span 3; }
+#panel-actors { grid-column: 1; grid-row: 2; }
+#panel-analytics { grid-column: 2; grid-row: 2; }
+#panel-sources { grid-column: 3; grid-row: 2 / span 2; }
+#panel-timeline { grid-column: 1; grid-row: 3; }
+#panel-bias   { grid-column: 2; grid-row: 3; }
 
-/* BRIEF */
-.brief-panel{grid-column:1/2;grid-row:3/4}
-.bhed{font-size:9px;font-weight:700;letter-spacing:1.5px;color:#ff8c00;text-transform:uppercase;margin-bottom:6px}
-.bbody{font-size:11px;color:#6a7a99;line-height:1.7;margin-bottom:12px}
-.bdl{display:inline-flex;align-items:center;gap:8px;border:1px solid #ff8c00;padding:5px 14px;border-radius:3px;cursor:pointer;color:#ff8c00;font-size:10px;font-weight:600;transition:background .15s}
-.bdl:hover{background:rgba(255,140,0,.1)}
+/* ── MAP ── */
+#map-container {
+  width: 100%; height: 100%;
+}
+#map { width: 100%; height: 100%; background: #05080f; }
+.leaflet-container { background: #05080f; }
 
-/* TREND */
-.trend-panel{grid-column:2/3;grid-row:3/4}
-.trow{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #0d1220}
-.tz{width:60px;font-size:11px;color:#8090aa;font-weight:600}
-.ta{width:18px;font-size:14px;font-weight:700;text-align:center}
-.tbar{flex:1;height:4px;background:#131926;border-radius:2px}
-.tbf{height:100%;border-radius:2px}
-.tpct{width:40px;text-align:right;font-size:10px;font-weight:600}
+/* Pulsing marker */
+@keyframes markerPulse {
+  0% { transform: scale(1); opacity: 1; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  animation: markerPulse 2s ease-out infinite;
+  pointer-events: none;
+}
 
-/* SOURCE */
-.src-panel{grid-column:3/4;grid-row:2/4}
-.src-sum{display:flex;gap:16px;padding:10px 14px;border-bottom:1px solid #131926}
-.src-cnt{display:flex;align-items:center;gap:6px;font-size:10px}
-.sdot{width:7px;height:7px;border-radius:50%}
-.si{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid #0d1220;cursor:pointer;transition:background .15s}
-.si:hover{background:#0b1020}
-.sn{flex:1;font-size:11px;color:#7a8aaa}
-.st{font-size:10px}
+/* ── IRAN GAUGE ── */
+#gauge-wrap {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  overflow-y: auto;
+}
+.gauge-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.gauge-score {
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--red-bright);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.gauge-label-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 2px;
+}
+.gauge-bar-wrap {
+  position: relative;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(to right, #1a4a1a, #4a4a00, #4a2000, #660000, #aa0000);
+  border: 1px solid var(--border);
+}
+.gauge-needle {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 3px;
+  background: #ffffff;
+  border-radius: 2px;
+  transition: left .8s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 0 8px rgba(255,255,255,.6);
+}
+.gauge-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.gauge-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  flex: 1;
+}
+.signal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.signal-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.signal-dot.critical { background: var(--red-bright); box-shadow: 0 0 5px var(--red-bright); }
+.signal-dot.high { background: var(--orange); }
+.signal-dot.medium { background: var(--amber); }
+.signal-dot.low { background: #5a7a5a; }
+.gauge-reasoning {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  line-height: 1.5;
+}
+
+/* ── COUNTRY PROFILES ── */
+.country-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+}
+.country-item:hover { background: #0a0f1d; }
+.country-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.country-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: #0d1525;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.country-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .5s ease;
+}
+.country-score {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+.country-arrow { font-size: 11px; min-width: 12px; text-align: center; }
+
+/* ── LIVE FEED ── */
+#panel-feed { border-left: 2px solid var(--red); }
+.feed-filters {
+  display: flex;
+  gap: 4px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.feed-filter-btn {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all .12s;
+  text-transform: uppercase;
+}
+.feed-filter-btn:hover { background: #101828; }
+.feed-filter-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+.feed-filter-btn.active.high { background: var(--orange); border-color: var(--orange); }
+.feed-filter-btn.active.medium { background: var(--amber); border-color: var(--amber); color: #000; }
+.feed-filter-btn.active.low { background: #4a6a4a; border-color: #4a6a4a; }
+#feed-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.feed-item {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background .12s;
+  border-left: 3px solid transparent;
+  animation: none;
+}
+.feed-item:hover { background: #0a0f1d; }
+.feed-item.sev-critical { border-left-color: var(--red-bright); }
+.feed-item.sev-high { border-left-color: var(--orange); }
+.feed-item.sev-medium { border-left-color: var(--amber); }
+.feed-item.sev-low { border-left-color: #4a6a4a; }
+@keyframes feedFlash {
+  0% { background: rgba(204,34,34,.25); }
+  100% { background: transparent; }
+}
+.feed-item.new-flash { animation: feedFlash 1.5s ease-out forwards; }
+.feed-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.sev-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sev-badge.critical { background: rgba(204,34,34,.25); color: #ff5555; border: 1px solid rgba(204,34,34,.4); }
+.sev-badge.high { background: rgba(255,140,0,.2); color: var(--orange); border: 1px solid rgba(255,140,0,.35); }
+.sev-badge.medium { background: rgba(255,196,0,.15); color: var(--amber); border: 1px solid rgba(255,196,0,.3); }
+.sev-badge.low { background: rgba(74,106,74,.25); color: #7aaa7a; border: 1px solid rgba(74,106,74,.4); }
+.feed-title {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.feed-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.feed-source { font-weight: 600; color: #4a6080; }
+.feed-score { font-variant-numeric: tabular-nums; }
+
+/* ── ACTOR NETWORK SVG ── */
+#actor-svg-wrap {
+  width: 100%; height: 100%; overflow: hidden;
+}
+#actor-svg {
+  width: 100%; height: 100%;
+}
+.actor-label {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  fill: var(--text-dim);
+  font-size: 11px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.actor-circle { cursor: pointer; }
+.actor-circle:hover { filter: brightness(1.3); }
+
+/* ── CANVAS CHARTS ── */
+#analytics-canvas-wrap {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  overflow-y: auto;
+}
+.chart-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+canvas.chart-canvas { width: 100%; display: block; }
+
+/* ── SOURCE MONITOR ── */
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.src-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.src-dot.active { background: #33cc66; box-shadow: 0 0 5px #33cc66; }
+.src-dot.slow { background: var(--amber); }
+.src-dot.down { background: var(--red-bright); }
+.src-name { flex: 1; color: var(--text); font-weight: 500; }
+.src-time { font-size: 9px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.src-count { font-size: 9px; color: var(--text-muted); min-width: 32px; text-align: right; }
+
+/* ── TIMELINE ── */
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.timeline-line {
+  position: absolute;
+  left: 22px; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.timeline-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+  z-index: 1;
+}
+.timeline-content { flex: 1; }
+.timeline-date {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: .5px;
+  margin-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-title {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.timeline-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tag {
+  font-size: 8px;
+  padding: 2px 6px;
+  background: #0d1525;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-muted);
+  letter-spacing: .5px;
+}
+
+/* ── BIAS TRACKER ── */
+.bias-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.bias-source-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  letter-spacing: .5px;
+}
+.bias-emphasis {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  font-style: italic;
+}
+.bias-bar-wrap {
+  height: 5px;
+  background: #0d1525;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.bias-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to right, #1a5a1a, #5a5a00, #8a2000);
+  transition: width .6s ease;
+}
+.bias-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--text-muted);
+}
+.bias-perspective {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.4;
+}
 </style>
 </head>
 <body>
 
-<div class="topbar">
+<!-- TOP BAR -->
+<div id="topbar">
   <div class="logo">MIDDLE EAST <em>CONFLICT</em> TRACKER</div>
-  <div style="display:flex;align-items:center;gap:20px">
-    <div class="live-badge"><div class="dot"></div>LIVE</div>
-    <div class="tinfo"><strong>38</strong> sources · <strong>2026-03-30</strong> · 14:22 UTC</div>
+  <div class="topbar-center">
+    <div class="live-badge"><span class="pulse-dot"></span>LIVE</div>
+    <div class="topbar-info">Sources: <strong id="src-count">—</strong></div>
+    <div class="topbar-info">Articles: <strong id="art-count">—</strong></div>
+    <div class="topbar-info">24h: <strong id="h24-count">—</strong></div>
+  </div>
+  <div id="utc-clock">00:00:00 UTC</div>
+</div>
+
+<!-- ALERT BANNER -->
+<div id="alert-banner">
+  <span class="alert-tag">⚠ CRITICAL ALERT</span>
+  <span class="alert-text" id="alert-text"></span>
+</div>
+
+<!-- STATS ROW -->
+<div id="stats-row">
+  <div class="stat-card">
+    <div class="stat-value red" id="stat-iran">—</div>
+    <div class="stat-label">Iran Risk</div>
+    <div class="stat-sub" id="stat-iran-label"></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value red" id="stat-incidents">—</div>
+    <div class="stat-label">Incidents 24h</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value orange" id="stat-avg-sev">—</div>
+    <div class="stat-label">Avg Severity</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value amber" id="stat-zones">—</div>
+    <div class="stat-label">Active Zones</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value white" id="stat-sources">—</div>
+    <div class="stat-label">Sources Live</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value red" id="stat-critical">—</div>
+    <div class="stat-label">Critical Today</div>
   </div>
 </div>
 
-<div class="alert">
-  <div class="atag">⚠ ESCALATION</div>
-  <div class="atext">Iran · 3 critical events in 60 min · IDF confirms Beirut command center strike · Hamas announces retaliatory operation</div>
-</div>
-
-<div class="stats">
-  <div class="stat"><div class="sv r">87</div><div class="sl">Iran Risk</div><div class="ss">↑ +4 today</div></div>
-  <div class="stat"><div class="sv r">142</div><div class="sl">Incidents</div><div class="ss">↑ last 24h</div></div>
-  <div class="stat"><div class="sv o">6.8</div><div class="sl">Avg Severity</div><div class="ss">↑ from 5.9</div></div>
-  <div class="stat"><div class="sv y">6</div><div class="sl">Active Zones</div></div>
-  <div class="stat"><div class="sv w">38</div><div class="sl">Sources Live</div></div>
-  <div class="stat"><div class="sv r">12</div><div class="sl">Critical Today</div><div class="ss">↑ from 5</div></div>
-</div>
-
-<div class="grid">
+<!-- MAIN GRID -->
+<div id="main-wrapper">
+<div id="grid-area">
 
   <!-- MAP -->
-  <div class="panel map-panel">
-    <div class="ph"><span class="ph-t">Incident Heatmap</span><span class="ph-b">Click marker → country profile</span></div>
-    <div class="pb" style="padding:0;position:relative">
-      <div class="mapbg">
-        <div class="land" style="left:10%;top:15%;width:18%;height:35%;border-radius:30% 20% 40% 25%"></div>
-        <div class="land" style="left:35%;top:18%;width:30%;height:45%;border-radius:20% 25% 20% 30%"></div>
-        <div class="land" style="left:50%;top:40%;width:24%;height:40%;border-radius:20% 30% 40% 15%"></div>
-        <div class="land" style="left:58%;top:15%;width:30%;height:38%;border-radius:25% 35% 30% 20%"></div>
-        <div class="land" style="left:0%;top:10%;width:38%;height:28%;border-radius:10% 20% 25% 5%"></div>
-        <div class="wlbl" style="left:18%;top:60%">RED SEA</div>
-        <div class="wlbl" style="left:68%;top:66%">GULF</div>
-        <div class="wlbl" style="left:4%;top:36%">MEDITERRANEAN</div>
-        <div class="mk" style="left:40%;top:37%" onclick="highlightCountry('Lebanon')">
-          <div class="mkc" style="width:16px;height:16px;background:#ff3333;color:#ff3333;box-shadow:0 0 18px #ff3333"></div>
-          <div class="mk-lbl" style="color:#ff8888">Lebanon</div>
-        </div>
-        <div class="mk" style="left:38%;top:47%" onclick="highlightCountry('Gaza')">
-          <div class="mkc" style="width:16px;height:16px;background:#ff3333;color:#ff3333;box-shadow:0 0 16px #ff3333"></div>
-          <div class="mk-lbl" style="color:#ff8888">Gaza</div>
-        </div>
-        <div class="mk" style="left:70%;top:27%" onclick="highlightCountry('Iran')">
-          <div class="mkc" style="width:14px;height:14px;background:#ff8c00;color:#ff8c00;box-shadow:0 0 14px #ff8c00"></div>
-          <div class="mk-lbl" style="color:#ffaa44">Iran</div>
-        </div>
-        <div class="mk" style="left:46%;top:24%" onclick="highlightCountry('Syria')">
-          <div class="mkc" style="width:12px;height:12px;background:#ff8c00;color:#ff8c00;box-shadow:0 0 12px #ff8c00"></div>
-          <div class="mk-lbl" style="color:#ffaa44">Syria</div>
-        </div>
-        <div class="mk" style="left:60%;top:62%" onclick="highlightCountry('Yemen')">
-          <div class="mkc" style="width:12px;height:12px;background:#ffc400;color:#ffc400;box-shadow:0 0 10px #ffc400"></div>
-          <div class="mk-lbl" style="color:#ffdd88">Yemen</div>
-        </div>
-        <div class="mk" style="left:60%;top:34%" onclick="highlightCountry('Iraq')">
-          <div class="mkc" style="width:12px;height:12px;background:#ffc400;color:#ffc400;box-shadow:0 0 10px #ffc400"></div>
-          <div class="mk-lbl" style="color:#ffdd88">Iraq</div>
-        </div>
-        <div class="mk" style="left:39%;top:43%" onclick="highlightCountry('Israel')">
-          <div class="mkc" style="width:10px;height:10px;background:#8090aa;color:#8090aa;box-shadow:0 0 6px #8090aa"></div>
-          <div class="mk-lbl" style="color:#8090aa">Israel</div>
-        </div>
-        <div class="map-legend">
-          <div class="lg"><div class="lgd" style="background:#ff3333"></div>Critical</div>
-          <div class="lg"><div class="lgd" style="background:#ff8c00"></div>High</div>
-          <div class="lg"><div class="lgd" style="background:#ffc400"></div>Medium</div>
-        </div>
-      </div>
+  <div class="panel" id="panel-map">
+    <div class="panel-header">
+      <span class="panel-title"><em>●</em> THREAT MAP</span>
+      <span class="panel-badge" id="map-badge">LOADING</span>
+    </div>
+    <div class="panel-body">
+      <div id="map"></div>
     </div>
   </div>
 
-  <!-- GAUGE -->
-  <div class="panel gauge-panel">
-    <div class="ph"><span class="ph-t">Iran Conflict Gauge</span><span class="ph-b">AI · 30min cache</span></div>
-    <div class="pb gi">
-      <div class="g-status">NEAR WAR</div>
-      <div class="g-num">87</div>
-      <div style="width:100%">
-        <div class="g-ends"><span>PEACE</span><span>TENSION</span><span>CRISIS</span><span>WAR</span></div>
-        <div class="g-track"><div class="g-fill"></div><div class="g-needle"></div></div>
-      </div>
-      <div class="gsigs">
-        <div class="gsig"><div class="gsd" style="background:#ff3333"></div>IDF airstrikes accelerating (+40% this week)</div>
-        <div class="gsig"><div class="gsd" style="background:#ff3333"></div>Iran enrichment at 60%, IAEA inspection refused</div>
-        <div class="gsig"><div class="gsd" style="background:#ff8c00"></div>Hezbollah missiles on alert status</div>
-        <div class="gsig"><div class="gsd" style="background:#ffc400"></div>US carrier group repositioning to E. Med</div>
-      </div>
+  <!-- IRAN GAUGE -->
+  <div class="panel" id="panel-gauge">
+    <div class="panel-header">
+      <span class="panel-title">IRAN ESCALATION GAUGE</span>
+    </div>
+    <div id="gauge-wrap">
+      <div class="loading-placeholder">Loading gauge data…</div>
     </div>
   </div>
 
   <!-- COUNTRY PROFILES -->
-  <div class="panel cty-panel">
-    <div class="ph"><span class="ph-t">Country Risk Profiles</span><span class="ph-b">Click for deep-dive</span></div>
-    <div class="pb" style="overflow-y:auto;padding:0">
-      <div class="crow" id="row-Gaza" onclick="highlightCountry('Gaza')"><div class="cn">Gaza</div><div class="cb"><div class="cbf" style="width:92%;background:#ff3333"></div></div><div class="cs" style="color:#ff3333">92</div><div class="ct" style="color:#ff3333">↑</div></div>
-      <div class="crow" id="row-Iran" onclick="highlightCountry('Iran')"><div class="cn">Iran</div><div class="cb"><div class="cbf" style="width:87%;background:#ff3333"></div></div><div class="cs" style="color:#ff3333">87</div><div class="ct" style="color:#ff3333">↑</div></div>
-      <div class="crow" id="row-Lebanon" onclick="highlightCountry('Lebanon')"><div class="cn">Lebanon</div><div class="cb"><div class="cbf" style="width:78%;background:#ff8c00"></div></div><div class="cs" style="color:#ff8c00">78</div><div class="ct" style="color:#ff3333">↑</div></div>
-      <div class="crow" id="row-Yemen" onclick="highlightCountry('Yemen')"><div class="cn">Yemen</div><div class="cb"><div class="cbf" style="width:64%;background:#ffc400"></div></div><div class="cs" style="color:#ffc400">64</div><div class="ct" style="color:#8090aa">→</div></div>
-      <div class="crow" id="row-Syria" onclick="highlightCountry('Syria')"><div class="cn">Syria</div><div class="cb"><div class="cbf" style="width:55%;background:#ffc400"></div></div><div class="cs" style="color:#ffc400">55</div><div class="ct" style="color:#44cc77">↓</div></div>
-      <div class="crow" id="row-Israel" onclick="highlightCountry('Israel')"><div class="cn">Israel</div><div class="cb"><div class="cbf" style="width:48%;background:#6a8aaa"></div></div><div class="cs" style="color:#6a8aaa">48</div><div class="ct" style="color:#ff3333">↑</div></div>
-      <div class="crow" id="row-Iraq" onclick="highlightCountry('Iraq')"><div class="cn">Iraq</div><div class="cb"><div class="cbf" style="width:42%;background:#3a5070"></div></div><div class="cs" style="color:#6a8aaa">42</div><div class="ct" style="color:#44cc77">↓</div></div>
+  <div class="panel" id="panel-countries">
+    <div class="panel-header">
+      <span class="panel-title">COUNTRY RISK PROFILES</span>
+      <span class="panel-badge" id="country-count-badge"></span>
+    </div>
+    <div class="panel-scroll" id="countries-list">
+      <div class="loading-placeholder">Loading country data…</div>
     </div>
   </div>
 
-  <!-- LIVE FEED -->
-  <div class="panel feed-panel">
-    <div class="ph"><span class="ph-t">Live Intel Feed</span><span class="ph-b" style="color:#ff3333">● LIVE</span></div>
-    <div class="filters">
-      <button class="fbtn on" onclick="filterFeed('all')">ALL</button>
-      <button class="fbtn" onclick="filterFeed('cr')">CRITICAL</button>
-      <button class="fbtn" onclick="filterFeed('hi')">HIGH</button>
-      <button class="fbtn" onclick="filterFeed('md')">MEDIUM</button>
-      <button class="fbtn" onclick="filterFeed('lo')">LOW</button>
+  <!-- LIVE FEED (spans rows 1-3) -->
+  <div class="panel" id="panel-feed">
+    <div class="panel-header">
+      <span class="panel-title">LIVE INTELLIGENCE FEED</span>
     </div>
-    <div class="feed-list" id="feed">
-      <div class="fi cr" data-sev="cr"><div class="fi-sev cr">● CRITICAL · 14:18</div><div class="fi-t">IDF confirms major airstrike on Hezbollah command center in southern Beirut</div><div class="fi-m">Times of Israel · Severity 9.2</div></div>
-      <div class="fi cr" data-sev="cr"><div class="fi-sev cr">● CRITICAL · 14:05</div><div class="fi-t">Hamas announces retaliatory operation following Rafah bombardment</div><div class="fi-m">Al Jazeera · Severity 8.8</div></div>
-      <div class="fi hi" data-sev="hi"><div class="fi-sev hi">● HIGH · 13:52</div><div class="fi-t">Iran announces uranium enrichment increase to 60%, IAEA alarmed</div><div class="fi-m">Reuters · Severity 8.1</div></div>
-      <div class="fi hi" data-sev="hi"><div class="fi-sev hi">● HIGH · 13:44</div><div class="fi-t">Houthi drone intercepted near Red Sea shipping lane, oil prices spike</div><div class="fi-m">BBC · Severity 7.4</div></div>
-      <div class="fi md" data-sev="md"><div class="fi-sev md">● MEDIUM · 13:30</div><div class="fi-t">US deploys additional carrier strike group to Eastern Mediterranean</div><div class="fi-m">AP · Severity 6.8</div></div>
-      <div class="fi md" data-sev="md"><div class="fi-sev md">● MEDIUM · 13:15</div><div class="fi-t">Syrian border clashes reported near Quneitra, IDF on alert</div><div class="fi-m">Haaretz · Severity 5.9</div></div>
-      <div class="fi lo" data-sev="lo"><div class="fi-sev lo">● LOW · 13:02</div><div class="fi-t">Qatar ceasefire talks stall; Hamas rejects latest proposal</div><div class="fi-m">Al Monitor · Severity 4.2</div></div>
-      <div class="fi lo" data-sev="lo"><div class="fi-sev lo">● LOW · 12:45</div><div class="fi-t">Iraq government condemns Israeli operations in neighboring Syria</div><div class="fi-m">Middle East Eye · Severity 3.8</div></div>
+    <div class="feed-filters" id="feed-filters">
+      <button class="feed-filter-btn active" data-sev="ALL">ALL</button>
+      <button class="feed-filter-btn" data-sev="critical">CRITICAL</button>
+      <button class="feed-filter-btn high" data-sev="high">HIGH</button>
+      <button class="feed-filter-btn medium" data-sev="medium">MEDIUM</button>
+      <button class="feed-filter-btn" data-sev="low">LOW</button>
+    </div>
+    <div id="feed-list">
+      <div class="loading-placeholder">Connecting to intelligence feed…</div>
     </div>
   </div>
 
   <!-- ACTOR NETWORK -->
-  <div class="panel net-panel">
-    <div class="ph"><span class="ph-t d">Actor Network</span><span class="ph-b">Alliances & opposition</span></div>
-    <div class="pb" style="padding:0;position:relative">
-      <div class="net-area">
-        <svg>
-          <line x1="50%" y1="44%" x2="27%" y2="24%" stroke="#cc2222" stroke-width="2" stroke-opacity=".6"/>
-          <line x1="50%" y1="44%" x2="73%" y2="24%" stroke="#cc2222" stroke-width="2" stroke-opacity=".6"/>
-          <line x1="50%" y1="44%" x2="50%" y2="72%" stroke="#cc2222" stroke-width="1.5" stroke-opacity=".5"/>
-          <line x1="27%" y1="24%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
-          <line x1="73%" y1="24%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
-          <line x1="50%" y1="72%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
-          <line x1="16%" y1="54%" x2="85%" y2="54%" stroke="#223" stroke-width="1" stroke-dasharray="3,5"/>
-        </svg>
-        <div class="anode" style="left:50%;top:44%;width:44px;height:44px;background:rgba(204,34,34,.25);border:2px solid #cc2222;font-size:10px">IRAN<div class="anode-lbl">Iran</div></div>
-        <div class="anode" style="left:27%;top:24%;width:34px;height:34px;background:rgba(204,34,34,.15);border:1.5px solid #aa3333;font-size:9px">HZB<div class="anode-lbl">Hezbollah</div></div>
-        <div class="anode" style="left:73%;top:24%;width:34px;height:34px;background:rgba(204,34,34,.15);border:1.5px solid #aa3333;font-size:9px">HMS<div class="anode-lbl">Hamas</div></div>
-        <div class="anode" style="left:50%;top:72%;width:32px;height:32px;background:rgba(204,34,34,.12);border:1.5px solid #883333;font-size:9px">HTH<div class="anode-lbl">Houthis</div></div>
-        <div class="anode" style="left:16%;top:54%;width:30px;height:30px;background:rgba(40,60,100,.3);border:1.5px solid #3a5070;color:#8090aa;font-size:9px">IDF<div class="anode-lbl">Israel</div></div>
-        <div class="anode" style="left:85%;top:54%;width:30px;height:30px;background:rgba(40,60,100,.3);border:1.5px solid #3a5070;color:#8090aa;font-size:9px">US<div class="anode-lbl">USA</div></div>
-        <div style="position:absolute;bottom:8px;left:10px;font-size:9px;color:#2a3a55;display:flex;gap:12px">
-          <span style="color:#cc2222">— Allied</span><span>-- Opposed</span>
-        </div>
+  <div class="panel" id="panel-actors">
+    <div class="panel-header">
+      <span class="panel-title">ACTOR NETWORK</span>
+      <span class="panel-badge">RELATIONSHIP MAP</span>
+    </div>
+    <div class="panel-body">
+      <div id="actor-svg-wrap">
+        <div class="loading-placeholder">Loading actor data…</div>
       </div>
     </div>
   </div>
 
   <!-- ANALYTICS -->
-  <div class="panel anal-panel">
-    <div class="ph"><span class="ph-t d">Analytics</span><span class="ph-b">Last 7 days</span></div>
-    <div class="pb" style="display:flex;flex-direction:column;justify-content:center">
-      <div class="chart-lbl">Incidents by Zone</div>
-      <div class="bars-wrap">
-        <div class="bc"><div class="bf" style="height:92%;background:#ff3333"></div><div class="blbl">Gaza</div></div>
-        <div class="bc"><div class="bf" style="height:76%;background:#ff3333"></div><div class="blbl">Lebanon</div></div>
-        <div class="bc"><div class="bf" style="height:58%;background:#ff8c00"></div><div class="blbl">Iran</div></div>
-        <div class="bc"><div class="bf" style="height:44%;background:#ffc400"></div><div class="blbl">Yemen</div></div>
-        <div class="bc"><div class="bf" style="height:33%;background:#3a5070"></div><div class="blbl">Syria</div></div>
-        <div class="bc"><div class="bf" style="height:22%;background:#3a5070"></div><div class="blbl">Iraq</div></div>
-      </div>
-      <div class="chart-lbl" style="margin-top:14px">7-Day Severity Trend</div>
-      <svg width="100%" height="50" style="display:block;padding:0 14px">
-        <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff3333" stop-opacity=".3"/><stop offset="100%" stop-color="#ff3333" stop-opacity="0"/></linearGradient></defs>
-        <polygon points="0,46 35,40 75,42 115,28 155,32 195,16 235,8 235,50 0,50" fill="url(#tg)"/>
-        <polyline points="0,46 35,40 75,42 115,28 155,32 195,16 235,8" fill="none" stroke="#ff3333" stroke-width="2"/>
-        <circle cx="235" cy="8" r="4" fill="#ff3333"/>
-      </svg>
+  <div class="panel" id="panel-analytics">
+    <div class="panel-header">
+      <span class="panel-title">ANALYTICS</span>
+    </div>
+    <div id="analytics-canvas-wrap">
+      <div class="loading-placeholder">Loading analytics…</div>
     </div>
   </div>
 
-  <!-- DAILY BRIEF -->
-  <div class="panel brief-panel">
-    <div class="ph"><span class="ph-t">Daily Intelligence Brief</span><span class="ph-b">AI · 06:00 UTC</span></div>
-    <div class="pb" style="padding:14px;overflow-y:auto">
-      <div style="margin-bottom:14px">
-        <div class="bhed">Top Developments</div>
-        <div class="bbody">Israel escalated airstrikes in Lebanon following Hezbollah rocket fire. Iran nuclear talks collapsed after IAEA inspection refusal. Houthi Red Sea operations resumed after 48h pause.</div>
-      </div>
-      <div style="margin-bottom:14px">
-        <div class="bhed">What To Watch</div>
-        <div class="bbody">IDF ground operation in Rafah · Iran IAEA deadline · US carrier group near Hormuz</div>
-      </div>
-      <div class="bdl" onclick="this.textContent='↓ Downloading...'">↓ Download PDF Brief</div>
+  <!-- SOURCE MONITOR (spans rows 2-3) -->
+  <div class="panel" id="panel-sources">
+    <div class="panel-header">
+      <span class="panel-title">SOURCE MONITOR</span>
+      <span class="panel-badge" id="src-monitor-badge"></span>
+    </div>
+    <div class="panel-scroll" id="sources-list">
+      <div class="loading-placeholder">Loading sources…</div>
     </div>
   </div>
 
-  <!-- WEEKLY TREND -->
-  <div class="panel trend-panel">
-    <div class="ph"><span class="ph-t">Weekly Trend</span><span class="ph-b">vs last 7 days</span></div>
-    <div class="pb" style="padding:0;overflow-y:auto">
-      <div class="trow"><div class="tz">Gaza</div><div class="ta" style="color:#ff3333">↑</div><div class="tbar"><div class="tbf" style="width:90%;background:#ff3333"></div></div><div class="tpct" style="color:#ff3333">+34%</div></div>
-      <div class="trow"><div class="tz">Lebanon</div><div class="ta" style="color:#ff3333">↑</div><div class="tbar"><div class="tbf" style="width:70%;background:#ff8c00"></div></div><div class="tpct" style="color:#ff8c00">+21%</div></div>
-      <div class="trow"><div class="tz">Iran</div><div class="ta" style="color:#ff8c00">↑</div><div class="tbar"><div class="tbf" style="width:55%;background:#ff8c00"></div></div><div class="tpct" style="color:#ff8c00">+18%</div></div>
-      <div class="trow"><div class="tz">Yemen</div><div class="ta" style="color:#4a5a78">→</div><div class="tbar"><div class="tbf" style="width:30%;background:#3a5070"></div></div><div class="tpct" style="color:#4a5a78">+2%</div></div>
-      <div class="trow"><div class="tz">Syria</div><div class="ta" style="color:#44cc77">↓</div><div class="tbar"><div class="tbf" style="width:20%;background:#44cc77"></div></div><div class="tpct" style="color:#44cc77">-12%</div></div>
+  <!-- TIMELINE -->
+  <div class="panel" id="panel-timeline">
+    <div class="panel-header">
+      <span class="panel-title">EVENT TIMELINE</span>
+      <span class="panel-badge" id="timeline-badge"></span>
+    </div>
+    <div class="panel-scroll" id="timeline-list">
+      <div class="loading-placeholder">Loading timeline…</div>
     </div>
   </div>
 
-  <!-- SOURCE MONITOR -->
-  <div class="panel src-panel">
-    <div class="ph"><span class="ph-t d">Source Health</span><span class="ph-b">40 feeds</span></div>
-    <div class="pb" style="padding:0;overflow-y:auto">
-      <div class="src-sum">
-        <div class="src-cnt"><div class="sdot" style="background:#44cc77"></div><span style="color:#8090aa">38 Active</span></div>
-        <div class="src-cnt"><div class="sdot" style="background:#ffc400"></div><span style="color:#8090aa">1 Slow</span></div>
-        <div class="src-cnt"><div class="sdot" style="background:#ff3333"></div><span style="color:#8090aa">1 Down</span></div>
-      </div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Al Jazeera</span><span class="st" style="color:#3a5070">1m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">BBC</span><span class="st" style="color:#3a5070">2m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Reuters</span><span class="st" style="color:#3a5070">1m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Times of Israel</span><span class="st" style="color:#3a5070">3m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Haaretz</span><span class="st" style="color:#3a5070">4m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#ffc400"></div><span class="sn">IRNA</span><span class="st" style="color:#ffc400">18m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#ff3333;box-shadow:0 0 5px #ff3333"></div><span class="sn">Press TV</span><span class="st" style="color:#ff3333;font-weight:700">DOWN</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">AP</span><span class="st" style="color:#3a5070">2m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Al Monitor</span><span class="st" style="color:#3a5070">5m ago</span></div>
-      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Middle East Eye</span><span class="st" style="color:#3a5070">6m ago</span></div>
+  <!-- BIAS TRACKER -->
+  <div class="panel" id="panel-bias">
+    <div class="panel-header">
+      <span class="panel-title">MEDIA BIAS TRACKER</span>
+    </div>
+    <div class="panel-scroll" id="bias-list">
+      <div class="loading-placeholder">Analyzing perspectives…</div>
     </div>
   </div>
 
 </div>
+</div>
 
 <script>
-// FILTER FEED
-function filterFeed(sev) {
-  document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('on'); });
-  event.target.classList.add('on');
-  document.querySelectorAll('#feed .fi').forEach(function(item) {
-    if (sev === 'all') {
-      item.style.display = 'block';
-    } else {
-      item.style.display = item.dataset.sev === sev ? 'block' : 'none';
+'use strict';
+
+// ── UTILITIES ──────────────────────────────────────────────────────────────
+
+function sevColor(sev) {
+  const s = (sev || '').toLowerCase();
+  if (s === 'critical') return '#ff3333';
+  if (s === 'high') return '#ff8c00';
+  if (s === 'medium') return '#ffc400';
+  return '#4a7a4a';
+}
+
+function sevClass(sev) {
+  const s = (sev || '').toLowerCase();
+  if (s === 'critical') return 'critical';
+  if (s === 'high') return 'high';
+  if (s === 'medium') return 'medium';
+  return 'low';
+}
+
+function scoreColor(score) {
+  const n = parseFloat(score) || 0;
+  if (n >= 8) return '#ff3333';
+  if (n >= 6) return '#ff8c00';
+  if (n >= 4) return '#ffc400';
+  return '#4a7a4a';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) +
+           ' ' + dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  } catch(e) { return String(d).slice(0,16); }
+}
+
+function timeAgo(d) {
+  if (!d) return '';
+  try {
+    const diff = Date.now() - new Date(d).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h/24) + 'd ago';
+  } catch(e) { return ''; }
+}
+
+async function apiFetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── UTC CLOCK ──────────────────────────────────────────────────────────────
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getUTCHours()).padStart(2,'0');
+  const m = String(now.getUTCMinutes()).padStart(2,'0');
+  const s = String(now.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('utc-clock').textContent = h + ':' + m + ':' + s + ' UTC';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── MAP ────────────────────────────────────────────────────────────────────
+
+let mapInstance = null;
+let mapMarkers = [];
+
+function initMap() {
+  mapInstance = L.map('map', {
+    center: [29, 45],
+    zoom: 5,
+    zoomControl: true,
+    attributionControl: true
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(mapInstance);
+}
+
+function loadMap() {
+  apiFetch('/api/heatmap').then(data => {
+    if (!Array.isArray(data) || data.length === 0) {
+      document.getElementById('map-badge').textContent = 'NO DATA';
+      return;
     }
+
+    mapMarkers.forEach(m => mapInstance.removeLayer(m));
+    mapMarkers = [];
+
+    data.forEach(point => {
+      if (point.lat == null || point.lng == null) return;
+      const color = sevColor(point.severity);
+      const r = Math.min(18, Math.max(6, (point.intensity || 5) * 1.5));
+
+      const circle = L.circleMarker([point.lat, point.lng], {
+        radius: r,
+        fillColor: color,
+        color: color,
+        weight: 1,
+        opacity: 0.9,
+        fillOpacity: 0.55
+      });
+
+      const pulseIcon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative;width:${r*2}px;height:${r*2}px;">
+          <div class="pulse-ring" style="border:2px solid ${color};width:${r*2}px;height:${r*2}px;top:0;left:0;"></div>
+          <div style="position:absolute;width:${r}px;height:${r}px;top:50%;left:50%;transform:translate(-50%,-50%);background:${color};border-radius:50%;opacity:.8;"></div>
+        </div>`,
+        iconSize: [r*2, r*2],
+        iconAnchor: [r, r]
+      });
+
+      const marker = L.marker([point.lat, point.lng], { icon: pulseIcon });
+      marker.bindPopup(
+        `<div style="background:#080d1a;color:#e0e4ef;padding:8px 12px;border:1px solid #131926;border-radius:3px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;">
+          <strong style="color:${color}">${escHtml(point.label || 'Event')}</strong><br>
+          <span style="font-size:10px;color:#7a8aaa;">Severity: ${escHtml(point.severity || 'unknown')}</span><br>
+          <span style="font-size:10px;color:#7a8aaa;">Intensity: ${point.intensity || 'N/A'}</span>
+        </div>`,
+        { className: 'dark-popup' }
+      );
+
+      marker.addTo(mapInstance);
+      mapMarkers.push(marker);
+    });
+
+    document.getElementById('map-badge').textContent = data.length + ' EVENTS';
+  }).catch(() => {
+    document.getElementById('map-badge').textContent = 'NO DATA';
   });
 }
 
-// HIGHLIGHT COUNTRY ROW
-function highlightCountry(name) {
-  document.querySelectorAll('.crow').forEach(function(r) {
-    r.style.background = '';
+// ── IRAN GAUGE ─────────────────────────────────────────────────────────────
+
+function loadGauge() {
+  const wrap = document.getElementById('gauge-wrap');
+  apiFetch('/api/iran-gauge').then(data => {
+    const score = data.score || 0;
+    const label = data.label || '';
+    const signals = Array.isArray(data.signals) ? data.signals : [];
+    const reasoning = data.reasoning || '';
+
+    let sigHtml = signals.map(s => {
+      const cls = sevClass(s.level);
+      return `<div class="signal-item">
+        <div class="signal-dot ${cls}"></div>
+        <span>${escHtml(s.text)}</span>
+      </div>`;
+    }).join('');
+
+    if (!sigHtml) sigHtml = '<div class="no-data">No signals available</div>';
+
+    wrap.innerHTML = `
+      <div class="gauge-score-row">
+        <div class="gauge-score">${score}</div>
+        <div class="gauge-label-text">${escHtml(label)}</div>
+      </div>
+      <div class="gauge-bar-wrap">
+        <div class="gauge-needle" id="gauge-needle" style="left:${score}%"></div>
+      </div>
+      <div class="gauge-bar-labels">
+        <span>PEACE</span><span>TENSION</span><span>CONFLICT</span><span>WAR</span>
+      </div>
+      <div class="gauge-signals">${sigHtml}</div>
+      ${reasoning ? `<div class="gauge-reasoning">${escHtml(reasoning)}</div>` : ''}
+    `;
+
+    // Update Iran stat card
+    document.getElementById('stat-iran').textContent = score;
+    document.getElementById('stat-iran-label').textContent = label;
+  }).catch(() => {
+    wrap.innerHTML = '<div class="no-data">No data available</div>';
   });
-  var row = document.getElementById('row-' + name);
-  if (row) {
-    row.style.background = '#1a1030';
-    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── COUNTRIES ──────────────────────────────────────────────────────────────
+
+let analyticsCache = null;
+
+function renderCountries(countryAverages) {
+  const list = document.getElementById('countries-list');
+  if (!Array.isArray(countryAverages) || countryAverages.length === 0) {
+    list.innerHTML = '<div class="no-data">No country data available</div>';
+    return;
   }
+
+  const sorted = [...countryAverages].sort((a,b) => (b.avgSeverity||0) - (a.avgSeverity||0));
+  document.getElementById('country-count-badge').textContent = sorted.length + ' COUNTRIES';
+
+  const maxScore = 10;
+  list.innerHTML = sorted.map(c => {
+    const pct = Math.min(100, ((c.avgSeverity||0) / maxScore) * 100);
+    const color = scoreColor(c.avgSeverity);
+    const arrow = c.avgSeverity >= 7 ? '▲' : c.avgSeverity >= 4 ? '►' : '▼';
+    const arrowColor = c.avgSeverity >= 7 ? '#ff3333' : c.avgSeverity >= 4 ? '#ff8c00' : '#4a7a4a';
+    return `<div class="country-item">
+      <div class="country-name">${escHtml(c.country)}</div>
+      <div class="country-bar-wrap">
+        <div class="country-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="country-score" style="color:${color}">${(c.avgSeverity||0).toFixed(1)}</div>
+      <div class="country-arrow" style="color:${arrowColor}">${arrow}</div>
+    </div>`;
+  }).join('');
+
+  // Update active zones stat
+  const activeZones = sorted.filter(c => (c.avgSeverity||0) > 5).length;
+  document.getElementById('stat-zones').textContent = activeZones;
+}
+
+// ── LIVE FEED ──────────────────────────────────────────────────────────────
+
+let feedItems = [];
+let feedFilter = 'ALL';
+
+function renderFeed() {
+  const list = document.getElementById('feed-list');
+  let items = feedItems;
+  if (feedFilter !== 'ALL') {
+    items = feedItems.filter(a => (a.severity||'').toLowerCase() === feedFilter.toLowerCase());
+  }
+  if (items.length === 0) {
+    list.innerHTML = '<div class="no-data">No items for this filter</div>';
+    return;
+  }
+  list.innerHTML = items.map((a, i) => {
+    const sc = sevClass(a.severity);
+    const actors = Array.isArray(a.actors) ? a.actors.slice(0,2).join(', ') : '';
+    return `<div class="feed-item sev-${sc}" data-id="${escHtml(a._id||i)}">
+      <div class="feed-item-header">
+        <span class="sev-badge ${sc}">${escHtml(a.severityLabel || a.severity || 'UNKNOWN')}</span>
+        <span style="font-size:9px;color:#4a5a70">${escHtml(a.country||actors)}</span>
+      </div>
+      <div class="feed-title">${escHtml(a.title)}</div>
+      <div class="feed-meta">
+        <span class="feed-source">${escHtml(a.source)}</span>
+        <span class="feed-score" style="color:${scoreColor(a.severityScore||a.severity)}">${a.severityScore != null ? a.severityScore.toFixed(1) : ''}</span>
+        <span>${timeAgo(a.publishedAt)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadFeed() {
+  apiFetch('/api/news?limit=60').then(data => {
+    if (Array.isArray(data)) {
+      feedItems = data;
+    } else if (Array.isArray(data.articles)) {
+      feedItems = data.articles;
+    } else {
+      feedItems = [];
+    }
+    renderFeed();
+
+    // Check for critical alert
+    const critical = feedItems.find(a => (a.severity||'').toLowerCase() === 'critical');
+    if (critical) {
+      document.getElementById('alert-text').textContent = critical.title;
+      document.getElementById('alert-banner').style.display = 'flex';
+    }
+
+    // Update critical today stat
+    const critCount = feedItems.filter(a => (a.severity||'').toLowerCase() === 'critical').length;
+    document.getElementById('stat-critical').textContent = critCount;
+  }).catch(() => {
+    document.getElementById('feed-list').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// Feed filter buttons
+document.getElementById('feed-filters').addEventListener('click', function(e) {
+  const btn = e.target.closest('.feed-filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.feed-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  feedFilter = btn.dataset.sev;
+  renderFeed();
+});
+
+// ── ACTOR NETWORK ──────────────────────────────────────────────────────────
+
+function renderActors(topActors) {
+  const wrap = document.getElementById('actor-svg-wrap');
+  if (!Array.isArray(topActors) || topActors.length === 0) {
+    wrap.innerHTML = '<div class="no-data">No actor data available</div>';
+    return;
+  }
+
+  const W = wrap.clientWidth || 400;
+  const H = wrap.clientHeight || 240;
+  const cx = W / 2;
+  const cy = H / 2;
+
+  // Sort and take top 10
+  const sorted = [...topActors].sort((a,b) => (b.count||0) - (a.count||0)).slice(0, 10);
+
+  // Fixed known relationships
+  const alliedRed = new Set(['Hezbollah','Hamas','Houthis','PIJ','IRGC','PMF']);
+  const adversaryDash = new Set(['Israel','USA','United States','US','Saudi Arabia','UAE']);
+
+  const centerActor = sorted.find(a => /iran/i.test(a.actor)) || { actor: 'Iran', count: sorted[0]?.count || 100 };
+  const others = sorted.filter(a => a !== centerActor);
+
+  const angleStep = (2 * Math.PI) / Math.max(others.length, 1);
+  const radius = Math.min(W, H) * 0.34;
+
+  let lines = '';
+  let nodes = '';
+
+  others.forEach((a, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    const isAllied = alliedRed.has(a.actor);
+    const isAdversary = adversaryDash.has(a.actor);
+    const lineColor = isAllied ? '#aa1111' : isAdversary ? '#3a4a5a' : '#2a3a4a';
+    const dashAttr = isAdversary ? 'stroke-dasharray="6 3"' : '';
+    const nodeColor = isAllied ? '#cc2222' : isAdversary ? '#3a5a8a' : '#3a4a3a';
+    const r = Math.max(6, Math.min(14, 6 + (a.count || 10) / 20));
+
+    lines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${lineColor}" stroke-width="1.5" opacity="0.7" ${dashAttr}/>`;
+    nodes += `<circle class="actor-circle" cx="${x}" cy="${y}" r="${r}" fill="${nodeColor}" stroke="${lineColor}" stroke-width="1.5"/>`;
+    nodes += `<text class="actor-label" x="${x}" y="${y + r + 12}" style="font-size:9px;fill:#7a8aaa;">${escHtml(a.actor.slice(0,12))}</text>`;
+  });
+
+  // Center node (Iran or dominant actor)
+  const centerCount = centerActor.count || 100;
+  const centerR = Math.max(16, Math.min(26, 16 + centerCount / 30));
+  nodes += `<circle cx="${cx}" cy="${cy}" r="${centerR}" fill="#550000" stroke="#cc2222" stroke-width="2"/>`;
+  nodes += `<text class="actor-label" x="${cx}" y="${cy + 4}" style="font-size:10px;font-weight:700;fill:#ff5555;">${escHtml(centerActor.actor.slice(0,8))}</text>`;
+  nodes += `<text class="actor-label" x="${cx}" y="${cy + 16}" style="font-size:8px;fill:#cc5555;">${centerCount}</text>`;
+
+  wrap.innerHTML = `<svg id="actor-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${lines}${nodes}</svg>`;
+}
+
+function loadActors() {
+  if (analyticsCache && analyticsCache.topActors) {
+    renderActors(analyticsCache.topActors);
+    return;
+  }
+  apiFetch('/api/analytics').then(data => {
+    analyticsCache = data;
+    renderActors(data.topActors);
+    renderCountries(data.countryAverages);
+    renderAnalytics(data);
+  }).catch(() => {
+    document.getElementById('actor-svg-wrap').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// ── ANALYTICS CHARTS ───────────────────────────────────────────────────────
+
+function renderAnalytics(data) {
+  const wrap = document.getElementById('analytics-canvas-wrap');
+
+  const countryAverages = Array.isArray(data.countryAverages) ? data.countryAverages.slice(0,8) : [];
+  const trends = Array.isArray(data.trends) ? data.trends.slice(-14) : [];
+
+  if (countryAverages.length === 0 && trends.length === 0) {
+    wrap.innerHTML = '<div class="no-data">No analytics data available</div>';
+    return;
+  }
+
+  wrap.innerHTML = '';
+
+  // Bar chart: country severities
+  if (countryAverages.length > 0) {
+    const barLabel = document.createElement('div');
+    barLabel.className = 'chart-label';
+    barLabel.textContent = 'Country Severity';
+    wrap.appendChild(barLabel);
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'chart-canvas';
+    const barH = Math.min(120, countryAverages.length * 18 + 10);
+    canvas.height = barH;
+    wrap.appendChild(canvas);
+
+    requestAnimationFrame(() => {
+      const W = canvas.offsetWidth || 200;
+      canvas.width = W;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,W,barH);
+
+      const barHeight = 12;
+      const gap = 6;
+      const labelW = 70;
+      const maxVal = 10;
+
+      const sorted = [...countryAverages].sort((a,b) => (b.avgSeverity||0) - (a.avgSeverity||0));
+      sorted.forEach((c, i) => {
+        const y = i * (barHeight + gap);
+        const val = c.avgSeverity || 0;
+        const barW = ((W - labelW - 30) * val) / maxVal;
+        const color = scoreColor(val);
+
+        ctx.fillStyle = '#0d1525';
+        ctx.fillRect(labelW, y, W - labelW - 30, barHeight);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(labelW, y, Math.max(2, barW), barHeight);
+
+        ctx.fillStyle = '#7a8aaa';
+        ctx.font = '9px Segoe UI, Arial, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText((c.country||'').slice(0,12), labelW - 4, y + barHeight - 2);
+
+        ctx.fillStyle = color;
+        ctx.textAlign = 'left';
+        ctx.fillText(val.toFixed(1), labelW + barW + 4, y + barHeight - 2);
+      });
+    });
+  }
+
+  // Trend line
+  if (trends.length > 1) {
+    const trendLabel = document.createElement('div');
+    trendLabel.className = 'chart-label';
+    trendLabel.style.marginTop = '8px';
+    trendLabel.textContent = '7-Day Severity Trend';
+    wrap.appendChild(trendLabel);
+
+    const tCanvas = document.createElement('canvas');
+    tCanvas.className = 'chart-canvas';
+    tCanvas.height = 60;
+    wrap.appendChild(tCanvas);
+
+    requestAnimationFrame(() => {
+      const W = tCanvas.offsetWidth || 200;
+      tCanvas.width = W;
+      const ctx = tCanvas.getContext('2d');
+      const H = 60;
+      ctx.clearRect(0,0,W,H);
+
+      const pad = { t:5, b:16, l:8, r:8 };
+      const gW = W - pad.l - pad.r;
+      const gH = H - pad.t - pad.b;
+      const maxV = 10;
+
+      // Grid lines
+      ctx.strokeStyle = '#131926';
+      ctx.lineWidth = 1;
+      [2.5, 5, 7.5].forEach(v => {
+        const y = pad.t + gH - (v / maxV) * gH;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + gW, y);
+        ctx.stroke();
+      });
+
+      // Gradient fill
+      const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + gH);
+      grad.addColorStop(0, 'rgba(204,34,34,.35)');
+      grad.addColorStop(1, 'rgba(204,34,34,.02)');
+
+      ctx.beginPath();
+      trends.forEach((p, i) => {
+        const x = pad.l + (i / (trends.length - 1)) * gW;
+        const y = pad.t + gH - ((p.avgSeverity||0) / maxV) * gH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      // Close fill
+      const lastX = pad.l + gW;
+      const lastY = pad.t + gH;
+      ctx.lineTo(lastX, lastY);
+      ctx.lineTo(pad.l, lastY);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.strokeStyle = '#cc2222';
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = 'round';
+      trends.forEach((p, i) => {
+        const x = pad.l + (i / (trends.length - 1)) * gW;
+        const y = pad.t + gH - ((p.avgSeverity||0) / maxV) * gH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Date labels (first and last)
+      ctx.fillStyle = '#3a4560';
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(fmtDate(trends[0].date).slice(0,6), pad.l, H - 2);
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtDate(trends[trends.length-1].date).slice(0,6), pad.l + gW, H - 2);
+    });
+  }
+
+  // Update avg severity stat
+  if (countryAverages.length > 0) {
+    const avg = countryAverages.reduce((s,c) => s + (c.avgSeverity||0), 0) / countryAverages.length;
+    document.getElementById('stat-avg-sev').textContent = avg.toFixed(1);
+  }
+}
+
+function loadAnalytics() {
+  if (analyticsCache) {
+    renderCountries(analyticsCache.countryAverages);
+    renderAnalytics(analyticsCache);
+    if (analyticsCache.topActors) renderActors(analyticsCache.topActors);
+    return;
+  }
+  apiFetch('/api/analytics').then(data => {
+    analyticsCache = data;
+    renderCountries(data.countryAverages);
+    renderAnalytics(data);
+    if (data.topActors) renderActors(data.topActors);
+  }).catch(() => {
+    document.getElementById('analytics-canvas-wrap').innerHTML = '<div class="no-data">No data available</div>';
+    document.getElementById('countries-list').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// ── SOURCE MONITOR ─────────────────────────────────────────────────────────
+
+function renderSources(sourceCoverage) {
+  const list = document.getElementById('sources-list');
+  if (!sourceCoverage || typeof sourceCoverage !== 'object') {
+    list.innerHTML = '<div class="no-data">No source data available</div>';
+    return;
+  }
+
+  const entries = Object.entries(sourceCoverage).sort((a,b) => (b[1].count||0) - (a[1].count||0));
+  if (entries.length === 0) {
+    list.innerHTML = '<div class="no-data">No sources found</div>';
+    return;
+  }
+
+  document.getElementById('src-monitor-badge').textContent = entries.length + ' SOURCES';
+
+  list.innerHTML = entries.map(([name, info]) => {
+    const lastUpd = info.lastUpdated || info.lastUpdate || null;
+    const diffMin = lastUpd ? Math.floor((Date.now() - new Date(lastUpd).getTime()) / 60000) : null;
+    let dotClass = 'active', statusText = 'Active';
+    if (diffMin === null) { dotClass = 'slow'; statusText = 'Unknown'; }
+    else if (diffMin > 30) { dotClass = 'down'; statusText = diffMin + 'm ago'; }
+    else if (diffMin > 10) { dotClass = 'slow'; statusText = diffMin + 'm ago'; }
+    else { statusText = diffMin < 1 ? 'Just now' : diffMin + 'm ago'; }
+
+    return `<div class="source-item">
+      <div class="src-dot ${dotClass}"></div>
+      <div class="src-name">${escHtml(name)}</div>
+      <div class="src-count">${info.count||0}</div>
+      <div class="src-time">${statusText}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadSources() {
+  apiFetch('/api/analysis').then(data => {
+    renderSources(data.sourceCoverage);
+  }).catch(() => {
+    document.getElementById('sources-list').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// ── TIMELINE ───────────────────────────────────────────────────────────────
+
+function loadTimeline() {
+  apiFetch('/api/timeline').then(data => {
+    const list = document.getElementById('timeline-list');
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<div class="no-data">No timeline data available</div>';
+      return;
+    }
+
+    document.getElementById('timeline-badge').textContent = data.length + ' EVENTS';
+    const sorted = [...data].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+
+    list.innerHTML = sorted.map(item => {
+      const color = sevColor(item.severity);
+      const actors = Array.isArray(item.actors) ? item.actors : [];
+      const countries = Array.isArray(item.countries) ? item.countries : [];
+      const tags = [...actors, ...countries].slice(0,4);
+
+      return `<div class="timeline-item">
+        <div class="timeline-dot" style="background:${color};box-shadow:0 0 5px ${color}"></div>
+        <div class="timeline-content">
+          <div class="timeline-date">${fmtDate(item.date)}</div>
+          <div class="timeline-title">${escHtml(item.title)}</div>
+          ${tags.length ? `<div class="timeline-tags">${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(() => {
+    document.getElementById('timeline-list').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// ── BIAS TRACKER ───────────────────────────────────────────────────────────
+
+function loadBias() {
+  apiFetch('/api/bias').then(data => {
+    const list = document.getElementById('bias-list');
+    const perspectives = Array.isArray(data.perspectives) ? data.perspectives : [];
+    if (perspectives.length === 0) {
+      list.innerHTML = '<div class="no-data">No bias data available</div>';
+      return;
+    }
+
+    list.innerHTML = perspectives.map(p => {
+      const biasScore = typeof p.biasScore === 'number' ? p.biasScore :
+        (p.perspective || '').toLowerCase().includes('pro-war') ? 75 :
+        (p.perspective || '').toLowerCase().includes('critical') ? 65 :
+        (p.perspective || '').toLowerCase().includes('neutral') ? 45 : 50;
+      const pct = Math.min(100, Math.max(5, biasScore));
+
+      return `<div class="bias-item">
+        <div class="bias-source-name">${escHtml(p.source)}</div>
+        ${p.perspective ? `<div class="bias-perspective">${escHtml(p.perspective)}</div>` : ''}
+        ${p.emphasis ? `<div class="bias-emphasis">${escHtml(p.emphasis)}</div>` : ''}
+        <div class="bias-bar-wrap">
+          <div class="bias-bar" style="width:${pct}%"></div>
+        </div>
+        <div class="bias-labels"><span>Neutral</span><span>Partisan</span></div>
+      </div>`;
+    }).join('');
+  }).catch(() => {
+    document.getElementById('bias-list').innerHTML = '<div class="no-data">No data available</div>';
+  });
+}
+
+// ── SSE ────────────────────────────────────────────────────────────────────
+
+function connectSSE() {
+  let es;
+  try { es = new EventSource('/events'); } catch(e) { return; }
+
+  es.addEventListener('stats_update', function(e) {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.totalArticles != null) document.getElementById('art-count').textContent = d.totalArticles;
+      if (d.last24h != null) {
+        document.getElementById('h24-count').textContent = d.last24h;
+        document.getElementById('stat-incidents').textContent = d.last24h;
+      }
+      if (d.activeSources != null) {
+        document.getElementById('src-count').textContent = d.activeSources;
+        document.getElementById('stat-sources').textContent = d.activeSources;
+      }
+    } catch(err) {}
+  });
+
+  es.addEventListener('new_articles', function(e) {
+    try {
+      const d = JSON.parse(e.data);
+      const count = d.count || 1;
+      // Reload feed to get new articles
+      apiFetch('/api/news?limit=60').then(data => {
+        const newItems = Array.isArray(data) ? data : (Array.isArray(data.articles) ? data.articles : []);
+        if (newItems.length === 0) return;
+
+        // Find truly new items (not already in feedItems)
+        const existingIds = new Set(feedItems.map(a => a._id || a.title));
+        const brandNew = newItems.filter(a => !existingIds.has(a._id || a.title));
+
+        if (brandNew.length > 0) {
+          feedItems = [...brandNew, ...feedItems].slice(0, 200);
+          renderFeed();
+
+          // Flash new items
+          requestAnimationFrame(() => {
+            const firstItems = document.querySelectorAll('#feed-list .feed-item');
+            for (let i = 0; i < Math.min(brandNew.length, firstItems.length); i++) {
+              firstItems[i].classList.remove('new-flash');
+              void firstItems[i].offsetWidth;
+              firstItems[i].classList.add('new-flash');
+            }
+            // Scroll to top
+            const feedList = document.getElementById('feed-list');
+            feedList.scrollTop = 0;
+          });
+
+          // Check for new critical
+          const newCritical = brandNew.find(a => (a.severity||'').toLowerCase() === 'critical');
+          if (newCritical) {
+            document.getElementById('alert-text').textContent = newCritical.title;
+            document.getElementById('alert-banner').style.display = 'flex';
+          }
+        }
+      }).catch(() => {});
+    } catch(err) {}
+  });
+
+  es.addEventListener('article_scored', function(e) {
+    try {
+      const d = JSON.parse(e.data);
+      if (!d.id) return;
+      const idx = feedItems.findIndex(a => a._id === d.id);
+      if (idx !== -1) {
+        if (d.severity) feedItems[idx].severity = d.severity;
+        if (d.severityLabel) feedItems[idx].severityLabel = d.severityLabel;
+        renderFeed();
+      }
+    } catch(err) {}
+  });
+
+  es.onerror = function() {
+    // Reconnect after 5 seconds
+    setTimeout(() => { es.close(); connectSSE(); }, 5000);
+  };
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+
+function init() {
+  // Init map first (synchronous)
+  initMap();
+
+  // Load all data concurrently
+  loadFeed();
+  loadGauge();
+  loadAnalytics();  // also loads countries + actors
+  loadMap();
+  loadSources();
+  loadTimeline();
+  loadBias();
+
+  // Start SSE
+  connectSSE();
+
+  // Refresh intervals
+  setInterval(loadMap, 60000);
+  setInterval(loadGauge, 90000);
+  setInterval(loadAnalytics, 120000);
+  setInterval(loadSources, 30000);
+  setInterval(loadTimeline, 120000);
+  setInterval(loadBias, 180000);
+}
+
+// Wait for DOM + Leaflet
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }
 </script>
 </body>
