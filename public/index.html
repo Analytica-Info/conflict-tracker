@@ -2,1498 +2,402 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0e1a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Middle East Conflict Tracker</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<title>Conflict Tracker v4</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0d1117; color: #f3f4f6; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05080f;color:#e0e4ef;font-family:'Segoe UI',Arial,sans-serif;font-size:13px}
 
-  .topbar { background: #0a0e1a; border-bottom: 1px solid #1a1f35; padding: 9px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 1000; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand-name { color: #f3f4f6; font-weight: 700; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
-  .live-pill { display: flex; align-items: center; gap: 5px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 9px; padding: 2px 8px; border-radius: 20px; letter-spacing: 1px; }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: blink 1.2s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .topbar-stats { display: flex; gap: 24px; font-size: 10px; }
-  .stat-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .stat-val { font-size: 13px; font-weight: 700; color: #f3f4f6; }
-  .stat-val.red { color: #ef4444; }
-  .stat-val.green { color: #22c55e; }
-  .stat-lbl { font-size: 8px; color: #4b5563; letter-spacing: 1px; text-transform: uppercase; }
+.topbar{background:#080d1a;border-bottom:2px solid #cc2222;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:17px;font-weight:700;letter-spacing:3px;color:#fff}
+.logo em{color:#cc2222;font-style:normal}
+.live-badge{display:flex;align-items:center;gap:7px;background:rgba(204,34,34,.18);border:1px solid #cc2222;padding:4px 12px;border-radius:3px;font-size:11px;font-weight:700;letter-spacing:2px;color:#ff4444}
+.dot{width:8px;height:8px;background:#ff4444;border-radius:50%;box-shadow:0 0 8px #ff4444;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.tinfo{font-size:12px;color:#7a8aaa}
+.tinfo strong{color:#b0bdd0}
 
-  .main-layout { display: flex; flex: 1; overflow: hidden; }
+.alert{background:#120506;border-bottom:1px solid #cc2222;padding:7px 24px;display:flex;align-items:center;gap:14px}
+.atag{background:#cc2222;color:#fff;padding:3px 12px;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:2px;white-space:nowrap}
+.atext{font-size:11px;color:#ff9999}
 
-  .sidebar { width: 290px; min-width: 290px; border-right: 1px solid #131929; display: flex; flex-direction: column; background: #080c14; }
-  .sidebar-header { padding: 9px 14px; border-bottom: 1px solid #131929; font-size: 9px; color: #4b5563; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .feed { overflow-y: auto; flex: 1; }
-  .feed::-webkit-scrollbar { width: 3px; }
-  .feed::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
-  .feed-item { padding: 10px 14px; border-bottom: 1px solid #0f1520; cursor: pointer; transition: background 0.12s; }
-  .feed-item:hover { background: #0e1526; }
-  .feed-inner { display: flex; gap: 8px; align-items: flex-start; }
-  .sev-bar { width: 3px; border-radius: 2px; flex-shrink: 0; align-self: stretch; margin-right: 2px; min-height: 30px; }
-  .feed-meta { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
-  .feed-source { font-size: 9px; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
-  .feed-badge { margin-left: auto; font-size: 8px; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.5px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-  .badge-critical { background: rgba(239,68,68,0.12); color: #ef4444; }
-  .badge-high { background: rgba(234,88,12,0.12); color: #ea580c; }
-  .badge-medium { background: rgba(234,179,8,0.12); color: #ca8a04; }
-  .badge-low { background: rgba(34,197,94,0.12); color: #16a34a; }
-  .feed-title { font-size: 11px; color: #d1d5db; line-height: 1.45; }
-  .feed-tags { font-size: 9px; color: #374151; margin-top: 4px; }
-  .sidebar-filters { padding: 9px 14px; border-top: 1px solid #131929; display: flex; flex-wrap: wrap; gap: 5px; flex-shrink: 0; max-height: 160px; overflow-y: auto; }
-.sidebar-filters::-webkit-scrollbar { width: 3px; }
-.sidebar-filters::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
-  .chip { font-size: 9px; padding: 3px 8px; border-radius: 10px; background: #0f1520; color: #6b7280; cursor: pointer; border: 1px solid #1f2937; transition: all 0.15s; }
-  .chip.active { background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.4); }
-  .empty-feed { padding: 24px; text-align: center; color: #374151; font-size: 11px; }
+.stats{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #131926}
+.stat{padding:14px 18px;text-align:center;border-right:1px solid #131926;cursor:pointer}
+.stat:hover{background:#0b1020}
+.sv{font-size:28px;font-weight:700;line-height:1}
+.sv.r{color:#ff3333}.sv.o{color:#ff8c00}.sv.y{color:#ffc400}.sv.w{color:#c8d0e0}
+.sl{font-size:10px;color:#4a5568;letter-spacing:1px;margin-top:4px;text-transform:uppercase}
+.ss{font-size:9px;color:#ff3333;margin-top:2px}
 
-  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; position: relative; }
-  .tabs { border-bottom: 1px solid #131929; display: flex; padding: 0 16px; background: #080c14; flex-shrink: 0; }
-  .tab { padding: 9px 16px; font-size: 10px; color: #4b5563; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 1px; text-transform: uppercase; transition: color 0.15s; }
-  .tab:hover { color: #9ca3af; }
-  .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+.grid{display:grid;grid-template-columns:2fr 1fr 1fr 290px;grid-template-rows:330px 290px 250px;gap:4px;padding:4px}
+.panel{background:#080d1a;border:1px solid #131926;border-radius:4px;display:flex;flex-direction:column;overflow:hidden}
+.ph{background:#060a14;border-bottom:1px solid #131926;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ph-t{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc3333}
+.ph-t.d{color:#3a4a66}
+.ph-b{font-size:9px;color:#2a3a55}
+.pb{flex:1;overflow:hidden}
 
-  .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
-  .tab-panel.active { display: flex; }
+/* MAP */
+.map-panel{grid-column:1/2;grid-row:1/2}
+.mapbg{width:100%;height:100%;background:#050e08;position:relative;overflow:hidden}
+.mapbg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:50px 50px;pointer-events:none}
+.land{position:absolute;background:rgba(20,55,30,.75);border:1px solid rgba(40,100,50,.5)}
+.wlbl{position:absolute;font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(80,140,220,.5);text-transform:uppercase}
+.mk{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:10}
+.mk:hover .mk-lbl{color:#fff}
+.mkc{border-radius:50%;position:relative}
+.mkc::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid currentColor;opacity:.5;animation:rng 2s infinite ease-out}
+.mkc::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:1px solid currentColor;opacity:.25;animation:rng 2s .5s infinite ease-out}
+@keyframes rng{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.4);opacity:0}}
+.mk-lbl{margin-top:6px;font-size:10px;font-weight:600;background:rgba(5,8,15,.92);padding:2px 7px;border-radius:2px;white-space:nowrap;pointer-events:none}
+.map-legend{position:absolute;bottom:12px;left:12px;background:rgba(5,8,15,.92);border:1px solid #131926;padding:7px 12px;border-radius:3px;display:flex;gap:14px}
+.lg{display:flex;align-items:center;gap:6px;font-size:10px;color:#8090aa}
+.lgd{width:8px;height:8px;border-radius:50%}
 
-  #map { flex: 1; }
-  .map-legend { position: absolute; bottom: 70px; right: 12px; background: rgba(8,12,20,0.92); border: 1px solid #1a2035; border-radius: 8px; padding: 12px 14px; z-index: 500; min-width: 160px; }
-  .legend-title { font-size: 8px; color: #4b5563; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .legend-gradient { height: 10px; border-radius: 5px; background: linear-gradient(to right, #22c55e, #84cc16, #eab308, #ea580c, #ef4444, #fff1f2); margin-bottom: 6px; }
-  .legend-labels { display: flex; justify-content: space-between; font-size: 8px; color: #6b7280; }
-  .legend-items { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
-  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #9ca3af; }
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+/* GAUGE */
+.gauge-panel{grid-column:2/3;grid-row:1/2}
+.gi{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:11px;padding:16px}
+.g-status{font-size:11px;font-weight:700;letter-spacing:3px;color:#ff3333}
+.g-num{font-size:80px;font-weight:700;color:#ff3333;line-height:1;text-shadow:0 0 40px rgba(255,51,51,.4)}
+.g-ends{display:flex;justify-content:space-between;font-size:9px;color:#3a4a66;margin-bottom:5px;width:100%}
+.g-track{height:8px;background:#131926;border-radius:4px;position:relative;width:100%}
+.g-fill{height:100%;width:87%;border-radius:4px;background:linear-gradient(90deg,#22aa55,#ffc400,#ff8c00,#ff3333)}
+.g-needle{position:absolute;top:-6px;left:87%;transform:translateX(-50%);width:3px;height:20px;background:#fff;border-radius:2px;box-shadow:0 0 6px #fff}
+.gsigs{width:100%;display:flex;flex-direction:column;gap:7px}
+.gsig{display:flex;align-items:flex-start;gap:8px;font-size:10px;color:#7a8aaa;line-height:1.4}
+.gsd{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
 
-  .panel-scroll { flex: 1; overflow-y: auto; padding: 24px 32px; }
-  .panel-scroll::-webkit-scrollbar { width: 3px; }
-  .panel-scroll::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
+/* COUNTRY */
+.cty-panel{grid-column:3/4;grid-row:1/2}
+.crow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #0d1220;cursor:pointer;transition:background .15s}
+.crow:hover{background:#0e1525}
+.cn{width:64px;font-size:11px;color:#8090aa;font-weight:600}
+.cb{flex:1;height:4px;background:#131926;border-radius:2px}
+.cbf{height:100%;border-radius:2px}
+.cs{width:30px;text-align:right;font-size:13px;font-weight:700}
+.ct{width:16px;text-align:center;font-size:14px;font-weight:700}
 
-  .section-header { font-size: 11px; color: #4b5563; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #131929; }
-  .timeline { position: relative; padding-left: 28px; }
-  .timeline::before { content:''; position:absolute; left:7px; top:0; bottom:0; width:1px; background:linear-gradient(to bottom,#ef4444,#ea580c,#eab308,#131929); }
-  .tl-item { position: relative; margin-bottom: 24px; }
-  .tl-dot { position: absolute; left: -24px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #0d1117; }
-  .tl-time { font-size: 9px; color: #4b5563; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
-  .tl-title { font-size: 13px; font-weight: 600; color: #f3f4f6; margin-bottom: 4px; line-height: 1.4; }
-  .tl-desc { font-size: 11px; color: #6b7280; line-height: 1.5; }
-  .tl-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
-  .tl-tag { font-size: 9px; padding: 2px 7px; border-radius: 3px; background: #0f1520; color: #4b5563; border: 1px solid #1a2035; }
-  .tl-sev { font-size: 9px; padding: 2px 7px; border-radius: 3px; font-weight: 600; }
+/* FEED */
+.feed-panel{grid-column:4/5;grid-row:1/4}
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#060a14;border-bottom:1px solid #131926;flex-shrink:0}
+.fbtn{padding:5px 11px;font-size:10px;border:1px solid #1e2d44;border-radius:3px;cursor:pointer;background:transparent;color:#5a6a88;font-family:'Segoe UI',Arial,sans-serif;transition:all .15s;letter-spacing:.5px;font-weight:500}
+.fbtn:hover{border-color:#4a5a78;color:#a0b0cc;background:rgba(255,255,255,.03)}
+.fbtn.on{background:rgba(204,34,34,.2);border-color:#cc2222;color:#ff6666;font-weight:700}
+.feed-list{flex:1;overflow-y:auto;padding:8px}
+.feed-list::-webkit-scrollbar{width:3px}
+.feed-list::-webkit-scrollbar-thumb{background:#1e2d44;border-radius:2px}
+.fi{padding:9px 10px 9px 12px;margin-bottom:4px;border-left:3px solid;border-radius:0 3px 3px 0;cursor:pointer;transition:background .15s;display:block}
+.fi:hover{background:#0c1220}
+.fi.cr{border-left-color:#ff3333}
+.fi.hi{border-left-color:#ff8c00}
+.fi.md{border-left-color:#ffc400}
+.fi.lo{border-left-color:#2a3a55}
+.fi-sev{font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.fi-sev.cr{color:#ff3333}.fi-sev.hi{color:#ff8c00}.fi-sev.md{color:#ffc400}.fi-sev.lo{color:#3a5070}
+.fi-t{font-size:11px;color:#b0bdd0;line-height:1.4;margin-bottom:4px}
+.fi-m{font-size:9px;color:#2a3a55}
+.fi[hidden]{display:none}
 
-  .related-grid { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-  .related-grid::-webkit-scrollbar { width: 3px; }
-  .related-grid::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
-  .related-group { background: #080c14; border: 1px solid #131929; border-radius: 8px; overflow: hidden; }
-  .related-group-header { padding: 12px 16px; background: #0a0e1a; border-bottom: 1px solid #131929; display: flex; align-items: center; gap: 10px; }
-  .related-group-title { font-size: 12px; font-weight: 600; color: #f3f4f6; flex: 1; }
-  .related-count { font-size: 9px; color: #4b5563; }
-  .related-badge { font-size: 9px; padding: 2px 8px; border-radius: 10px; }
-  .related-articles { padding: 0; }
-  .related-article { padding: 10px 16px; border-bottom: 1px solid #0f1520; display: flex; gap: 10px; align-items: flex-start; }
-  .related-article:last-child { border-bottom: none; }
-  .rel-source { font-size: 9px; color: #4b5563; white-space: nowrap; min-width: 90px; }
-  .rel-title { font-size: 11px; color: #d1d5db; line-height: 1.4; }
-  .rel-link { font-size: 9px; color: #3b82f6; margin-top: 2px; cursor: pointer; }
+/* NETWORK */
+.net-panel{grid-column:1/2;grid-row:2/3}
+.net-area{width:100%;height:100%;position:relative}
+.net-area svg{position:absolute;inset:0;width:100%;height:100%}
+.anode{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;transform:translate(-50%,-50%);cursor:pointer;color:#e0e4ef;transition:transform .15s}
+.anode:hover{transform:translate(-50%,-50%) scale(1.15)}
+.anode-lbl{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:5px;font-size:9px;white-space:nowrap;color:#6a7a99;font-weight:600;pointer-events:none}
 
-  .analytics-grid { flex: 1; overflow-y: auto; padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
-  .analytics-grid::-webkit-scrollbar { width: 3px; }
-  .analytics-grid::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
-  .analytics-card { background: #080c14; border: 1px solid #131929; border-radius: 8px; padding: 16px; }
-  .analytics-card.full { grid-column: 1 / -1; }
-  .ac-title { font-size: 9px; color: #4b5563; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
-  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .bar-label { font-size: 10px; color: #9ca3af; width: 90px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar-track { flex: 1; height: 6px; background: #0f1520; border-radius: 3px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-  .bar-val { font-size: 10px; color: #6b7280; width: 30px; text-align: right; }
-  .trend-row { display: flex; align-items: flex-end; gap: 6px; height: 60px; margin-top: 4px; }
-  .trend-bar { flex: 1; border-radius: 2px 2px 0 0; min-width: 0; transition: height 0.5s; }
-  .trend-labels { display: flex; gap: 6px; margin-top: 5px; }
-  .trend-lbl { flex: 1; font-size: 8px; color: #374151; text-align: center; }
-  .donut-wrap { display: flex; align-items: center; gap: 16px; }
-  .donut { width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0; }
-  .donut-legend { display: flex; flex-direction: column; gap: 6px; }
-  .donut-row { display: flex; align-items: center; gap: 7px; font-size: 10px; color: #9ca3af; }
-  .donut-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* ANALYTICS */
+.anal-panel{grid-column:2/3;grid-row:2/3}
+.chart-lbl{font-size:9px;color:#3a4a66;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;padding:0 14px}
+.bars-wrap{display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 14px}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+.bf{width:100%;border-radius:2px 2px 0 0;min-height:4px;transition:height .3s}
+.blbl{font-size:9px;color:#3a4a66}
 
-  .stats-row { border-top: 1px solid #131929; display: flex; background: #080c14; flex-shrink: 0; }
-  .stat-box { flex: 1; padding: 8px 10px; border-right: 1px solid #131929; text-align: center; }
-  .stat-box:last-child { border-right: none; }
-  .sbl { font-size: 8px; color: #4b5563; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-  .sbv { font-size: 17px; font-weight: 700; }
-  .sbs { font-size: 9px; color: #374151; margin-top: 1px; }
+/* BRIEF */
+.brief-panel{grid-column:1/2;grid-row:3/4}
+.bhed{font-size:9px;font-weight:700;letter-spacing:1.5px;color:#ff8c00;text-transform:uppercase;margin-bottom:6px}
+.bbody{font-size:11px;color:#6a7a99;line-height:1.7;margin-bottom:12px}
+.bdl{display:inline-flex;align-items:center;gap:8px;border:1px solid #ff8c00;padding:5px 14px;border-radius:3px;cursor:pointer;color:#ff8c00;font-size:10px;font-weight:600;transition:background .15s}
+.bdl:hover{background:rgba(255,140,0,.1)}
 
-  .leaflet-container { background: #050a14; }
-  .leaflet-popup-content-wrapper { background: rgba(8,12,20,0.97); border: 1px solid #1f2937; border-radius: 8px; color: #f3f4f6; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
-  .leaflet-popup-tip { background: #0d1117; }
-  .leaflet-popup-content { margin: 12px 16px; font-size: 12px; line-height: 1.5; }
-  .leaflet-popup-close-button { color: #4b5563 !important; }
-  .leaflet-control-zoom a { background: #0f1520; color: #6b7280; border-color: #1f2937; }
-  .leaflet-control-zoom a:hover { background: #1a2035; color: #f3f4f6; }
-  .leaflet-control-attribution { background: rgba(5,10,20,0.8) !important; color: #374151 !important; font-size: 8px; }
+/* TREND */
+.trend-panel{grid-column:2/3;grid-row:3/4}
+.trow{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #0d1220}
+.tz{width:60px;font-size:11px;color:#8090aa;font-weight:600}
+.ta{width:18px;font-size:14px;font-weight:700;text-align:center}
+.tbar{flex:1;height:4px;background:#131926;border-radius:2px}
+.tbf{height:100%;border-radius:2px}
+.tpct{width:40px;text-align:right;font-size:10px;font-weight:600}
 
-  .loading { color: #4b5563; font-size: 11px; padding: 20px; text-align: center; }
-
-        /* Map interactive markers */
-        @keyframes pulse-ring {
-            0%   { transform: scale(1);   opacity: 0.8; }
-            70%  { transform: scale(2.5); opacity: 0; }
-            100% { transform: scale(2.5); opacity: 0; }
-        }
-        @keyframes pulse-ring-slow {
-            0%   { transform: scale(1);   opacity: 0.6; }
-            70%  { transform: scale(2.0); opacity: 0; }
-            100% { transform: scale(2.0); opacity: 0; }
-        }
-        .pulse-dot { border-radius:50%; position:relative; cursor:pointer; display:block; }
-        .pulse-dot::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100%; height:100%; border-radius:50%; animation:pulse-ring 1.4s ease-out infinite; }
-        .pulse-dot.critical { background:#ff2a2a; box-shadow:0 0 12px #ff2a2a; }
-        .pulse-dot.critical::before { border:2px solid #ff2a2a; }
-        .pulse-dot.high { background:#ff8c00; box-shadow:0 0 8px #ff8c00; }
-        .pulse-dot.high::before { border:2px solid #ff8c00; animation-name:pulse-ring-slow; }
-        .pulse-dot.medium { background:#ffd700; box-shadow:0 0 5px #ffd700; }
-        .pulse-dot.medium::before { display:none; }
-        .pulse-dot.low { background:#00c853; box-shadow:0 0 4px #00c853; }
-        .pulse-dot.low::before { display:none; }
-        .leaflet-popup-content-wrapper { background:rgba(12,18,28,0.97) !important; color:#ddd !important; border:1px solid #2a3a4a !important; border-radius:8px !important; box-shadow:0 4px 20px rgba(0,0,0,0.6) !important; }
-        .leaflet-popup-tip { background:rgba(12,18,28,0.97) !important; }
-        .leaflet-popup-close-button { color:#888 !important; }
-        #map-selected-bar { display:none; position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1000; background:rgba(20,20,30,0.92); border:1px solid #ff8c00; border-radius:6px; padding:6px 14px; font-size:12px; color:#ff8c00; white-space:nowrap; pointer-events:auto; }
-        #map-selected-bar button { margin-left:10px; background:none; border:1px solid #ff8c00; border-radius:4px; color:#ff8c00; cursor:pointer; padding:1px 7px; font-size:11px; }
-        #map-selected-bar button:hover { background:rgba(255,140,0,0.2); }
-        .map-popup { font-size:12px; line-height:1.5; max-width:260px; }
-        .map-popup .pop-header { font-size:14px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
-        .map-popup .pop-sev { font-size:10px; padding:2px 6px; border-radius:4px; }
-        .map-popup .pop-sev.critical { background:rgba(255,42,42,0.13); color:#ff2a2a; border:1px solid #ff2a2a; }
-        .map-popup .pop-sev.high { background:rgba(255,140,0,0.13); color:#ff8c00; border:1px solid #ff8c00; }
-        .map-popup .pop-sev.medium { background:rgba(255,215,0,0.13); color:#ffd700; border:1px solid #ffd700; }
-        .map-popup .pop-sev.low { background:rgba(0,200,83,0.13); color:#00c853; border:1px solid #00c853; }
-        .map-popup .pop-headlines { list-style:none; padding:0; margin:0 0 8px 0; }
-        .map-popup .pop-headlines li { padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.07); font-size:11px; color:#ccc; }
-        .map-popup .pop-headlines li:last-child { border-bottom:none; }
-        .map-popup .pop-filter-btn { width:100%; padding:5px; background:rgba(26,50,80,0.8); border:1px solid #4af; border-radius:4px; color:#4af; cursor:pointer; font-size:11px; }
-        .map-popup .pop-filter-btn:hover { background:rgba(26,60,100,0.9); }
-        
-  /* ══════ MOBILE RESPONSIVE ══════ */
-  .menu-toggle {
-    display: none;
-    flex-direction: column;
-    gap: 4px;
-    cursor: pointer;
-    padding: 4px;
-    margin-right: 8px;
-    flex-shrink: 0;
-  }
-  .menu-toggle span {
-    display: block;
-    width: 20px;
-    height: 2px;
-    background: #9ca3af;
-    border-radius: 2px;
-    transition: all 0.2s;
-  }
-  .menu-toggle.open span:nth-child(1) { transform: rotate(45deg) translate(4px, 4px); }
-  .menu-toggle.open span:nth-child(2) { opacity: 0; }
-  .menu-toggle.open span:nth-child(3) { transform: rotate(-45deg) translate(4px, -4px); }
-
-  @media (max-width: 768px) {
-    /* ── body / layout ── */
-    body { height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
-    .main-layout { flex-direction: column; height: auto; overflow: visible; }
-
-    /* ── topbar ── */
-    .topbar { padding: 8px 12px; gap: 8px; }
-    .brand-name { font-size: 10px; letter-spacing: 1px; }
-    .live-pill { font-size: 8px; padding: 2px 6px; }
-    .topbar-stats { gap: 10px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-    .topbar-stats::-webkit-scrollbar { display: none; }
-    .stat-val { font-size: 11px; }
-    .stat-lbl { font-size: 7px; }
-    .menu-toggle { display: flex; }
-
-    /* ── sidebar ── */
-    .sidebar {
-      width: 100%;
-      min-width: unset;
-      border-right: none;
-      border-bottom: 1px solid #131929;
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-      flex-direction: column;
-    }
-    .sidebar.mob-open { max-height: 480px; }
-    .feed { max-height: 280px; overflow-y: auto; }
-    .sidebar-filters { max-height: 140px; overflow-y: auto; }
-
-    /* ── tabs ── */
-    .tabs {
-      display: flex;
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      padding: 0 4px;
-    }
-    .tabs::-webkit-scrollbar { display: none; }
-    .tab { padding: 10px 12px; font-size: 9px; flex-shrink: 0; }
-
-    /* ── tab panels ── */
-    .tab-panel { height: auto; min-height: 60vh; overflow: visible; }
-    .tab-panel.active { display: flex; }
-
-    /* ── map panel ── */
-    #persistent-map-wrap { height: 220px; min-height: 220px; }
-    #map { height: 100%; }
-    .map-legend {
-      bottom: auto;
-      top: 8px;
-      right: 8px;
-      padding: 7px 10px;
-      min-width: 110px;
-      font-size: 9px;
-    }
-    .legend-items { display: none; }
-
-    /* ── map selected bar ── */
-    #map-selected-bar { font-size: 10px; padding: 5px 10px; top: 6px; }
-
-    /* ── analytics grid ── */
-    .analytics-grid {
-      grid-template-columns: 1fr;
-      padding: 10px 12px;
-      gap: 10px;
-    }
-    .analytics-card.full { grid-column: 1; }
-
-    /* ── bottom stats row ── */
-    .stats-row { flex-wrap: wrap; }
-    .stat-box {
-      flex: 1 1 calc(33.33% - 1px);
-      min-width: 0;
-      padding: 7px 6px;
-    }
-    .sbv { font-size: 14px; }
-    .sbs { font-size: 8px; }
-
-    /* ── panel scroll / timeline / related ── */
-    .panel-scroll { padding: 14px 14px; }
-    .related-grid { padding: 10px 12px; gap: 10px; }
-    .related-group-header { flex-wrap: wrap; gap: 6px; }
-    .related-article { flex-direction: column; gap: 4px; }
-    .rel-source { min-width: unset; }
-    .tl-title { font-size: 12px; }
-
-    /* ── analysis / bias panels ── */
-    #panel-analysis, #panel-bias {
-      padding: 10px 12px;
-      overflow-y: auto;
-      height: auto;
-      min-height: 60vh;
-    }
-    #analysis-content > div:first-child,
-    #analysis-content [style*="grid-template-columns"] {
-      grid-template-columns: 1fr !important;
-    }
-
-    /* ── feed items ── */
-    .feed-title { font-size: 12px; }
-    .feed-meta { flex-wrap: wrap; }
-    .feed-source { max-width: 140px; }
-  }
-
-  @media (max-width: 400px) {
-    .topbar { padding: 7px 10px; }
-    .brand-name { font-size: 9px; }
-    .stat-item:nth-child(n+4) { display: none; }
-    .tab { padding: 10px 10px; font-size: 8px; }
-    #persistent-map-wrap { height: 200px; min-height: 200px; }
-    .stat-box { flex: 1 1 50%; }
-  }
-
-  
-  /* ── Mobile filter strip ── */
-  .mob-filter-strip {
-    display: none;
-    flex-direction: column;
-    background: #080c14;
-    border-bottom: 1px solid #131929;
-    flex-shrink: 0;
-    padding: 0;
-  }
-  .mob-filter-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    white-space: nowrap;
-  }
-  .mob-filter-row::-webkit-scrollbar { display: none; }
-  .mob-filter-row:first-child { border-bottom: 1px solid #0f1520; }
-  .mob-filter-label {
-    font-size: 8px;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    flex-shrink: 0;
-  }
-  @media (max-width: 768px) {
-    .mob-filter-strip { display: flex; }
-  }
-
-
-  /* ── Iran Conflict Gauge ── */
-  #iran-gauge-widget {
-    background: #070d18;
-    border: 1px solid #1e2d45;
-    border-radius: 6px;
-    margin: 6px 8px 0;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .gauge-hdr {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 12px;
-    background: #0b1220;
-    border-bottom: 1px solid #1e2d45;
-  }
-  .gauge-title-txt {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    text-transform: uppercase;
-  }
-  .gauge-red-dot {
-    width: 6px; height: 6px;
-    background: #ef4444;
-    border-radius: 50%;
-    animation: live-blink 1.5s ease-in-out infinite;
-    display: inline-block;
-    flex-shrink: 0;
-  }
-  .gauge-ai-badge {
-    font-size: 8px;
-    background: #1e3a5f;
-    color: #60a5fa;
-    padding: 2px 7px;
-    border-radius: 3px;
-    letter-spacing: 1px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .gauge-ai-badge:hover { background: #1e4a7f; }
-  .gauge-body {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 8px 14px 10px;
-  }
-  .gauge-svg-wrap { width: 160px; min-width: 160px; flex-shrink: 0; }
-  .gauge-svg-wrap svg { width: 100%; height: auto; display: block; }
-  .gauge-right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #gauge-label {
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    color: #f1f5f9;
-    margin-bottom: 6px;
-  }
-  .glbl-green { color: #4ade80 !important; }
-  .glbl-yellow { color: #facc15 !important; }
-  .glbl-orange { color: #fb923c !important; }
-  .glbl-red { color: #f87171 !important; }
-  #gauge-reasoning {
-    font-size: 11px;
-    color: #94a3b8;
-    line-height: 1.55;
-    margin-bottom: 7px;
-  }
-  #gauge-signals {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 7px;
-  }
-  .g-signal {
-    font-size: 9px;
-    background: #1a2535;
-    color: #7dd3fc;
-    padding: 2px 7px;
-    border-radius: 3px;
-    letter-spacing: 0.3px;
-    white-space: nowrap;
-  }
-  #gauge-footer {
-    font-size: 9px;
-    color: #4b5563;
-    letter-spacing: 0.3px;
-  }
-  @media (max-width: 768px) {
-    .gauge-body { flex-direction: column; align-items: center; padding: 8px 10px 10px; gap: 6px; }
-    .gauge-svg-wrap { width: 200px; }
-    .gauge-right { width: 100%; align-items: center; text-align: center; }
-    #gauge-signals { justify-content: center; }
-    #iran-gauge-widget { margin: 6px 4px 0; }
-  }
-
-  /* Live connection dot */
-  #live-dot {
-    width: 7px; height: 7px;
-    background: #ef4444;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 4px;
-    transition: background 0.5s;
-    animation: live-blink 1.5s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-
-  /* ── Persistent always-visible map ── */
-  #persistent-map-wrap {
-    position: relative;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    transition: flex 0.3s ease, height 0.3s ease;
-    border-bottom: 1px solid #131929;
-  }
-  #persistent-map-wrap.map-compact {
-    flex: 0 0 190px;
-    height: 190px;
-    min-height: 190px;
-    max-height: 190px;
-  }
-  #persistent-map-wrap #map {
-    flex: 1;
-    min-height: 0;
-  }
-  #tab-content-area {
-    flex: 1;
-    display: none;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-  #tab-content-area.active {
-    display: flex;
-  }
-  #map-ctx-label {
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(8,12,20,0.85);
-    border: 1px solid #1e3a5f;
-    color: #60a5fa;
-    font-size: 9px;
-    font-family: monospace;
-    letter-spacing: 1px;
-    padding: 3px 10px;
-    border-radius: 4px;
-    z-index: 500;
-    pointer-events: none;
-    white-space: nowrap;
-    display: none;
-  }
-  #persistent-map-wrap.map-compact #map-ctx-label {
-    display: block;
-  }
-  @media (max-width: 768px) {
-    #persistent-map-wrap { flex: 0 0 220px; height: 220px; }
-    #persistent-map-wrap.map-full-mobile { flex: 1; height: auto; }
-    #tab-content-area { flex: 1; min-height: 50vh; }
-  }
-
-  #map-selected-bar {
-    display: none;
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    background: rgba(255,140,0,0.1);
-    border: 1px solid #ff8c00;
-    color: #ff8c00;
-    padding: 6px 14px;
-    border-radius: 5px;
-    font-size: 11px;
-    white-space: nowrap;
-    pointer-events: auto;
-  }
-  #map-selected-bar button {
-    margin-left: 10px;
-    background: none;
-    border: 1px solid #ff8c00;
-    border-radius: 3px;
-    color: #ff8c00;
-    cursor: pointer;
-    padding: 1px 6px;
-    font-size: 10px;
-  }
-  #map-selected-bar button:hover { background: rgba(255,140,0,0.2); }
-  </style>
+/* SOURCE */
+.src-panel{grid-column:3/4;grid-row:2/4}
+.src-sum{display:flex;gap:16px;padding:10px 14px;border-bottom:1px solid #131926}
+.src-cnt{display:flex;align-items:center;gap:6px;font-size:10px}
+.sdot{width:7px;height:7px;border-radius:50%}
+.si{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid #0d1220;cursor:pointer;transition:background .15s}
+.si:hover{background:#0b1020}
+.sn{flex:1;font-size:11px;color:#7a8aaa}
+.st{font-size:10px}
+</style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="brand">
-    <div class="brand-name">&#x2B21; Middle East Conflict Tracker</div>
-    <div class="live-pill"><span class="live-dot"></span> LIVE</div>
-  </div>
-  <div class="topbar-stats">
-    <div class="stat-item"><span class="stat-val red" id="stat-severity">&#x2014;</span><span class="stat-lbl">Severity</span></div>
-    <div class="stat-item"><span class="stat-val" id="stat-incidents">&#x2014;</span><span class="stat-lbl">Incidents</span></div>
-    <div class="stat-item"><span class="stat-val red" id="stat-critical">&#x2014;</span><span class="stat-lbl">Critical</span></div>
-    <div class="stat-item"><span class="stat-val" id="stat-analyzed">&#x2014;</span><span class="stat-lbl">Analyzed</span></div>
-    <div class="stat-item"><span class="stat-val green" id="stat-sources">&#x2014;</span><span class="stat-lbl">Sources Live</span></div>
+  <div class="logo">MIDDLE EAST <em>CONFLICT</em> TRACKER</div>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div class="live-badge"><div class="dot"></div>LIVE</div>
+    <div class="tinfo"><strong>38</strong> sources · <strong>2026-03-30</strong> · 14:22 UTC</div>
   </div>
 </div>
 
-<div class="main-layout">
-  <div class="sidebar">
-    <div class="sidebar-header"><span class="live-dot"></span> Live Feed</div>
-    <div class="feed" id="feed-list"><div class="loading">Loading...</div></div>
-    <div class="sidebar-filters" id="filters">
-      <div style="font-size:8px;color:#374151;letter-spacing:1px;text-transform:uppercase;width:100%;margin-bottom:4px">Severity</div>
-      <span class="chip sev-chip active" onclick="filterSeverity(this,'')">All</span>
-      <span class="chip sev-chip" style="border-color:#ef444444" onclick="filterSeverity(this,'critical')"><span style="color:#ef4444">●</span> Critical</span>
-      <span class="chip sev-chip" style="border-color:#ea580c44" onclick="filterSeverity(this,'high')"><span style="color:#ea580c">●</span> High</span>
-      <span class="chip sev-chip" style="border-color:#eab30844" onclick="filterSeverity(this,'medium')"><span style="color:#eab308">●</span> Medium</span>
-      <span class="chip sev-chip" style="border-color:#22c55e44" onclick="filterSeverity(this,'low')"><span style="color:#22c55e">●</span> Low</span>
-      <div style="font-size:8px;color:#374151;letter-spacing:1px;text-transform:uppercase;width:100%;margin-top:8px;margin-bottom:4px">Country / Actor</div>
-      <span class="chip country-chip active" onclick="filterCountry(this,'')">All</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Iran')">Iran</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Israel')">Israel</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Lebanon')">Lebanon</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Yemen')">Yemen</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Gaza')">Gaza</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Syria')">Syria</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Iraq')">Iraq</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'US')">US</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Hezbollah')">Hezbollah</span>
-      <span class="chip country-chip" onclick="filterCountry(this,'Houthis')">Houthis</span>
+<div class="alert">
+  <div class="atag">⚠ ESCALATION</div>
+  <div class="atext">Iran · 3 critical events in 60 min · IDF confirms Beirut command center strike · Hamas announces retaliatory operation</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="sv r">87</div><div class="sl">Iran Risk</div><div class="ss">↑ +4 today</div></div>
+  <div class="stat"><div class="sv r">142</div><div class="sl">Incidents</div><div class="ss">↑ last 24h</div></div>
+  <div class="stat"><div class="sv o">6.8</div><div class="sl">Avg Severity</div><div class="ss">↑ from 5.9</div></div>
+  <div class="stat"><div class="sv y">6</div><div class="sl">Active Zones</div></div>
+  <div class="stat"><div class="sv w">38</div><div class="sl">Sources Live</div></div>
+  <div class="stat"><div class="sv r">12</div><div class="sl">Critical Today</div><div class="ss">↑ from 5</div></div>
+</div>
+
+<div class="grid">
+
+  <!-- MAP -->
+  <div class="panel map-panel">
+    <div class="ph"><span class="ph-t">Incident Heatmap</span><span class="ph-b">Click marker → country profile</span></div>
+    <div class="pb" style="padding:0;position:relative">
+      <div class="mapbg">
+        <div class="land" style="left:10%;top:15%;width:18%;height:35%;border-radius:30% 20% 40% 25%"></div>
+        <div class="land" style="left:35%;top:18%;width:30%;height:45%;border-radius:20% 25% 20% 30%"></div>
+        <div class="land" style="left:50%;top:40%;width:24%;height:40%;border-radius:20% 30% 40% 15%"></div>
+        <div class="land" style="left:58%;top:15%;width:30%;height:38%;border-radius:25% 35% 30% 20%"></div>
+        <div class="land" style="left:0%;top:10%;width:38%;height:28%;border-radius:10% 20% 25% 5%"></div>
+        <div class="wlbl" style="left:18%;top:60%">RED SEA</div>
+        <div class="wlbl" style="left:68%;top:66%">GULF</div>
+        <div class="wlbl" style="left:4%;top:36%">MEDITERRANEAN</div>
+        <div class="mk" style="left:40%;top:37%" onclick="highlightCountry('Lebanon')">
+          <div class="mkc" style="width:16px;height:16px;background:#ff3333;color:#ff3333;box-shadow:0 0 18px #ff3333"></div>
+          <div class="mk-lbl" style="color:#ff8888">Lebanon</div>
+        </div>
+        <div class="mk" style="left:38%;top:47%" onclick="highlightCountry('Gaza')">
+          <div class="mkc" style="width:16px;height:16px;background:#ff3333;color:#ff3333;box-shadow:0 0 16px #ff3333"></div>
+          <div class="mk-lbl" style="color:#ff8888">Gaza</div>
+        </div>
+        <div class="mk" style="left:70%;top:27%" onclick="highlightCountry('Iran')">
+          <div class="mkc" style="width:14px;height:14px;background:#ff8c00;color:#ff8c00;box-shadow:0 0 14px #ff8c00"></div>
+          <div class="mk-lbl" style="color:#ffaa44">Iran</div>
+        </div>
+        <div class="mk" style="left:46%;top:24%" onclick="highlightCountry('Syria')">
+          <div class="mkc" style="width:12px;height:12px;background:#ff8c00;color:#ff8c00;box-shadow:0 0 12px #ff8c00"></div>
+          <div class="mk-lbl" style="color:#ffaa44">Syria</div>
+        </div>
+        <div class="mk" style="left:60%;top:62%" onclick="highlightCountry('Yemen')">
+          <div class="mkc" style="width:12px;height:12px;background:#ffc400;color:#ffc400;box-shadow:0 0 10px #ffc400"></div>
+          <div class="mk-lbl" style="color:#ffdd88">Yemen</div>
+        </div>
+        <div class="mk" style="left:60%;top:34%" onclick="highlightCountry('Iraq')">
+          <div class="mkc" style="width:12px;height:12px;background:#ffc400;color:#ffc400;box-shadow:0 0 10px #ffc400"></div>
+          <div class="mk-lbl" style="color:#ffdd88">Iraq</div>
+        </div>
+        <div class="mk" style="left:39%;top:43%" onclick="highlightCountry('Israel')">
+          <div class="mkc" style="width:10px;height:10px;background:#8090aa;color:#8090aa;box-shadow:0 0 6px #8090aa"></div>
+          <div class="mk-lbl" style="color:#8090aa">Israel</div>
+        </div>
+        <div class="map-legend">
+          <div class="lg"><div class="lgd" style="background:#ff3333"></div>Critical</div>
+          <div class="lg"><div class="lgd" style="background:#ff8c00"></div>High</div>
+          <div class="lg"><div class="lgd" style="background:#ffc400"></div>Medium</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="main-content">
-
-    <!-- Iran Conflict Gauge -->
-    <div id="iran-gauge-widget">
-      <div class="gauge-hdr">
-        <div class="gauge-title-txt">
-          <span class="gauge-red-dot"></span>
-          IRAN CONFLICT GAUGE &mdash; Peace vs Ground Invasion Probability
-        </div>
-        <span class="gauge-ai-badge" onclick="refreshIranGauge()" title="Force refresh">&#x21BB; AI LIVE</span>
+  <!-- GAUGE -->
+  <div class="panel gauge-panel">
+    <div class="ph"><span class="ph-t">Iran Conflict Gauge</span><span class="ph-b">AI · 30min cache</span></div>
+    <div class="pb gi">
+      <div class="g-status">NEAR WAR</div>
+      <div class="g-num">87</div>
+      <div style="width:100%">
+        <div class="g-ends"><span>PEACE</span><span>TENSION</span><span>CRISIS</span><span>WAR</span></div>
+        <div class="g-track"><div class="g-fill"></div><div class="g-needle"></div></div>
       </div>
-      <div class="gauge-body">
-        <div class="gauge-svg-wrap">
-          <svg viewBox="0 0 200 118" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 15 105 A 85 85 0 0 0 185 105" fill="none" stroke="#111827" stroke-width="20" stroke-linecap="round"/>
-            <path d="M 15 105 A 85 85 0 0 0 31.2 55.1" fill="none" stroke="#16a34a" stroke-width="16" opacity="0.9"/>
-            <path d="M 31.2 55.1 A 85 85 0 0 0 73.7 24.2" fill="none" stroke="#ca8a04" stroke-width="16" opacity="0.9"/>
-            <path d="M 73.7 24.2 A 85 85 0 0 0 126.3 24.2" fill="none" stroke="#ea580c" stroke-width="16" opacity="0.9"/>
-            <path d="M 126.3 24.2 A 85 85 0 0 0 168.8 55.1" fill="none" stroke="#dc2626" stroke-width="16" opacity="0.9"/>
-            <path d="M 168.8 55.1 A 85 85 0 0 0 185 105" fill="none" stroke="#7f1d1d" stroke-width="16" opacity="0.9"/>
-            <text x="100" y="90" id="gauge-score-num" fill="white" font-size="26" text-anchor="middle" font-weight="bold" font-family="monospace">&#x2014;</text>
-            <line id="gauge-needle" x1="100" y1="105" x2="100" y2="26" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90, 100, 105)"/>
-            <circle cx="100" cy="105" r="6" fill="#0d1117"/>
-            <circle id="gauge-center-dot" cx="100" cy="105" r="4" fill="#94a3b8"/>
-            <text x="8" y="116" fill="#6b7280" font-size="7.5" text-anchor="middle" font-family="monospace">PEACE</text>
-            <text x="192" y="116" fill="#6b7280" font-size="7.5" text-anchor="middle" font-family="monospace">INVASION</text>
-          </svg>
-        </div>
-        <div class="gauge-right">
-          <div id="gauge-label">LOADING...</div>
-          <div id="gauge-reasoning">Fetching AI analysis of recent events...</div>
-          <div id="gauge-signals"></div>
-          <div id="gauge-footer">&#x2014;</div>
-        </div>
+      <div class="gsigs">
+        <div class="gsig"><div class="gsd" style="background:#ff3333"></div>IDF airstrikes accelerating (+40% this week)</div>
+        <div class="gsig"><div class="gsd" style="background:#ff3333"></div>Iran enrichment at 60%, IAEA inspection refused</div>
+        <div class="gsig"><div class="gsd" style="background:#ff8c00"></div>Hezbollah missiles on alert status</div>
+        <div class="gsig"><div class="gsd" style="background:#ffc400"></div>US carrier group repositioning to E. Med</div>
       </div>
-    </div>
-
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('map',this)">MAP</div>
-      <div class="tab" onclick="switchTab('timeline',this)">TIMELINE</div>
-      <div class="tab" onclick="switchTab('related',this)">RELATED</div>
-      <div class="tab" onclick="switchTab('analytics',this)">ANALYTICS</div>
-      <div class="tab" onclick="switchTab('analysis',this)">ANALYSIS</div>
-      <div class="tab" onclick="switchTab('bias',this)">BIAS TRACKER</div>
-
-    </div>
-
-    <!-- Mobile filter strip (always visible on mobile) -->
-    <div class="mob-filter-strip" id="mob-filters">
-      <div class="mob-filter-row">
-        <span class="mob-filter-label">Sev</span>
-        <span class="chip sev-chip active" onclick="filterSeverity(this,'');syncMobFilters()">All</span>
-        <span class="chip sev-chip" style="border-color:#ef444444" onclick="filterSeverity(this,'critical');syncMobFilters()"><span style="color:#ef4444">&#9679;</span> Critical</span>
-        <span class="chip sev-chip" style="border-color:#ea580c44" onclick="filterSeverity(this,'high');syncMobFilters()"><span style="color:#ea580c">&#9679;</span> High</span>
-        <span class="chip sev-chip" style="border-color:#eab30844" onclick="filterSeverity(this,'medium');syncMobFilters()"><span style="color:#eab308">&#9679;</span> Medium</span>
-        <span class="chip sev-chip" style="border-color:#22c55e44" onclick="filterSeverity(this,'low');syncMobFilters()"><span style="color:#22c55e">&#9679;</span> Low</span>
-      </div>
-      <div class="mob-filter-row">
-        <span class="mob-filter-label">Filter</span>
-        <span class="chip country-chip active" onclick="filterCountry(this,'');syncMobFilters()">All</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Iran');syncMobFilters()">Iran</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Israel');syncMobFilters()">Israel</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Lebanon');syncMobFilters()">Lebanon</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Yemen');syncMobFilters()">Yemen</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Gaza');syncMobFilters()">Gaza</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Syria');syncMobFilters()">Syria</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Iraq');syncMobFilters()">Iraq</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'US');syncMobFilters()">US</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Hezbollah');syncMobFilters()">Hezbollah</span>
-        <span class="chip country-chip" onclick="filterCountry(this,'Houthis');syncMobFilters()">Houthis</span>
-      </div>
-    </div>
-
-        <!-- Persistent map — always visible, updates per tab -->
-    <div id="persistent-map-wrap">
-      <div id="map"></div>
-      <div id="map-ctx-label">All recent events</div>
-      <div id="map-selected-bar"></div>
-      <div class="map-legend" id="map-legend-el">
-        <div class="legend-title">Conflict Intensity</div>
-        <div class="legend-gradient"></div>
-        <div class="legend-labels"><span>Calm</span><span>Active</span><span>Critical</span></div>
-        <div class="legend-items" style="margin-top:10px">
-          <div class="legend-row"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px #ef4444"></div>Critical (8-10)</div>
-          <div class="legend-row"><div class="legend-dot" style="background:#ea580c;box-shadow:0 0 5px #ea580c"></div>High (6-8)</div>
-          <div class="legend-row"><div class="legend-dot" style="background:#eab308;box-shadow:0 0 4px #eab308"></div>Medium (4-6)</div>
-          <div class="legend-row"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 4px #22c55e"></div>Low / Diplomatic</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab content area — shows below persistent map for non-map tabs -->
-    <div id="tab-content-area">
-        <div id="panel-timeline" class="tab-panel">
-      <div class="panel-scroll">
-        <div class="section-header">AI-Extracted Conflict Timeline</div>
-        <div class="timeline" id="timeline-list"><div class="loading">Loading timeline...</div></div>
-      </div>
-    </div>
-
-    <div id="panel-related" class="tab-panel">
-      <div class="related-grid" id="related-list"><div class="loading">Loading related articles...</div></div>
-    </div>
-
-    
-      <div id="panel-analysis" class="tab-panel" style="overflow-y:auto;padding:16px;flex-direction:column">
-        <div id="analysis-content">
-          <div class="loading">Loading analysis...</div>
-        </div>
-      </div>
-
-      <div id="panel-bias" class="tab-panel" style="overflow-y:auto;padding:16px;flex-direction:column">
-        <div id="bias-content">
-          <div class="loading">Loading bias data...</div>
-        </div>
-      </div>
-      <div id="panel-analytics" class="tab-panel">
-      <div class="analytics-grid" id="analytics-content">
-        <div class="loading" style="grid-column:1/-1">Loading analytics...</div>
-      </div>
-    </div>
-
-    </div><!-- /tab-content-area -->
-
-    <div class="stats-row">
-      <div class="stat-box"><div class="sbl">Severity Index</div><div class="sbv red" id="bs-severity">&#x2014;</div><div class="sbs" id="bs-severity-sub">loading...</div></div>
-      <div class="stat-box"><div class="sbl">Incidents Today</div><div class="sbv" id="bs-incidents">&#x2014;</div><div class="sbs" id="bs-countries">&#x2014;</div></div>
-      <div class="stat-box"><div class="sbl">Critical Events</div><div class="sbv red" id="bs-critical">&#x2014;</div><div class="sbs">last 24h</div></div>
-      <div class="stat-box"><div class="sbl">Articles Analyzed</div><div class="sbv blue" id="bs-analyzed">&#x2014;</div><div class="sbs">last 24h</div></div>
-      <div class="stat-box"><div class="sbl">Active Sources</div><div class="sbv" id="bs-sources">&#x2014;</div><div class="sbs">RSS feeds</div></div>
     </div>
   </div>
+
+  <!-- COUNTRY PROFILES -->
+  <div class="panel cty-panel">
+    <div class="ph"><span class="ph-t">Country Risk Profiles</span><span class="ph-b">Click for deep-dive</span></div>
+    <div class="pb" style="overflow-y:auto;padding:0">
+      <div class="crow" id="row-Gaza" onclick="highlightCountry('Gaza')"><div class="cn">Gaza</div><div class="cb"><div class="cbf" style="width:92%;background:#ff3333"></div></div><div class="cs" style="color:#ff3333">92</div><div class="ct" style="color:#ff3333">↑</div></div>
+      <div class="crow" id="row-Iran" onclick="highlightCountry('Iran')"><div class="cn">Iran</div><div class="cb"><div class="cbf" style="width:87%;background:#ff3333"></div></div><div class="cs" style="color:#ff3333">87</div><div class="ct" style="color:#ff3333">↑</div></div>
+      <div class="crow" id="row-Lebanon" onclick="highlightCountry('Lebanon')"><div class="cn">Lebanon</div><div class="cb"><div class="cbf" style="width:78%;background:#ff8c00"></div></div><div class="cs" style="color:#ff8c00">78</div><div class="ct" style="color:#ff3333">↑</div></div>
+      <div class="crow" id="row-Yemen" onclick="highlightCountry('Yemen')"><div class="cn">Yemen</div><div class="cb"><div class="cbf" style="width:64%;background:#ffc400"></div></div><div class="cs" style="color:#ffc400">64</div><div class="ct" style="color:#8090aa">→</div></div>
+      <div class="crow" id="row-Syria" onclick="highlightCountry('Syria')"><div class="cn">Syria</div><div class="cb"><div class="cbf" style="width:55%;background:#ffc400"></div></div><div class="cs" style="color:#ffc400">55</div><div class="ct" style="color:#44cc77">↓</div></div>
+      <div class="crow" id="row-Israel" onclick="highlightCountry('Israel')"><div class="cn">Israel</div><div class="cb"><div class="cbf" style="width:48%;background:#6a8aaa"></div></div><div class="cs" style="color:#6a8aaa">48</div><div class="ct" style="color:#ff3333">↑</div></div>
+      <div class="crow" id="row-Iraq" onclick="highlightCountry('Iraq')"><div class="cn">Iraq</div><div class="cb"><div class="cbf" style="width:42%;background:#3a5070"></div></div><div class="cs" style="color:#6a8aaa">42</div><div class="ct" style="color:#44cc77">↓</div></div>
+    </div>
+  </div>
+
+  <!-- LIVE FEED -->
+  <div class="panel feed-panel">
+    <div class="ph"><span class="ph-t">Live Intel Feed</span><span class="ph-b" style="color:#ff3333">● LIVE</span></div>
+    <div class="filters">
+      <button class="fbtn on" onclick="filterFeed('all')">ALL</button>
+      <button class="fbtn" onclick="filterFeed('cr')">CRITICAL</button>
+      <button class="fbtn" onclick="filterFeed('hi')">HIGH</button>
+      <button class="fbtn" onclick="filterFeed('md')">MEDIUM</button>
+      <button class="fbtn" onclick="filterFeed('lo')">LOW</button>
+    </div>
+    <div class="feed-list" id="feed">
+      <div class="fi cr" data-sev="cr"><div class="fi-sev cr">● CRITICAL · 14:18</div><div class="fi-t">IDF confirms major airstrike on Hezbollah command center in southern Beirut</div><div class="fi-m">Times of Israel · Severity 9.2</div></div>
+      <div class="fi cr" data-sev="cr"><div class="fi-sev cr">● CRITICAL · 14:05</div><div class="fi-t">Hamas announces retaliatory operation following Rafah bombardment</div><div class="fi-m">Al Jazeera · Severity 8.8</div></div>
+      <div class="fi hi" data-sev="hi"><div class="fi-sev hi">● HIGH · 13:52</div><div class="fi-t">Iran announces uranium enrichment increase to 60%, IAEA alarmed</div><div class="fi-m">Reuters · Severity 8.1</div></div>
+      <div class="fi hi" data-sev="hi"><div class="fi-sev hi">● HIGH · 13:44</div><div class="fi-t">Houthi drone intercepted near Red Sea shipping lane, oil prices spike</div><div class="fi-m">BBC · Severity 7.4</div></div>
+      <div class="fi md" data-sev="md"><div class="fi-sev md">● MEDIUM · 13:30</div><div class="fi-t">US deploys additional carrier strike group to Eastern Mediterranean</div><div class="fi-m">AP · Severity 6.8</div></div>
+      <div class="fi md" data-sev="md"><div class="fi-sev md">● MEDIUM · 13:15</div><div class="fi-t">Syrian border clashes reported near Quneitra, IDF on alert</div><div class="fi-m">Haaretz · Severity 5.9</div></div>
+      <div class="fi lo" data-sev="lo"><div class="fi-sev lo">● LOW · 13:02</div><div class="fi-t">Qatar ceasefire talks stall; Hamas rejects latest proposal</div><div class="fi-m">Al Monitor · Severity 4.2</div></div>
+      <div class="fi lo" data-sev="lo"><div class="fi-sev lo">● LOW · 12:45</div><div class="fi-t">Iraq government condemns Israeli operations in neighboring Syria</div><div class="fi-m">Middle East Eye · Severity 3.8</div></div>
+    </div>
+  </div>
+
+  <!-- ACTOR NETWORK -->
+  <div class="panel net-panel">
+    <div class="ph"><span class="ph-t d">Actor Network</span><span class="ph-b">Alliances & opposition</span></div>
+    <div class="pb" style="padding:0;position:relative">
+      <div class="net-area">
+        <svg>
+          <line x1="50%" y1="44%" x2="27%" y2="24%" stroke="#cc2222" stroke-width="2" stroke-opacity=".6"/>
+          <line x1="50%" y1="44%" x2="73%" y2="24%" stroke="#cc2222" stroke-width="2" stroke-opacity=".6"/>
+          <line x1="50%" y1="44%" x2="50%" y2="72%" stroke="#cc2222" stroke-width="1.5" stroke-opacity=".5"/>
+          <line x1="27%" y1="24%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="73%" y1="24%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="50%" y1="72%" x2="16%" y2="54%" stroke="#334466" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="16%" y1="54%" x2="85%" y2="54%" stroke="#223" stroke-width="1" stroke-dasharray="3,5"/>
+        </svg>
+        <div class="anode" style="left:50%;top:44%;width:44px;height:44px;background:rgba(204,34,34,.25);border:2px solid #cc2222;font-size:10px">IRAN<div class="anode-lbl">Iran</div></div>
+        <div class="anode" style="left:27%;top:24%;width:34px;height:34px;background:rgba(204,34,34,.15);border:1.5px solid #aa3333;font-size:9px">HZB<div class="anode-lbl">Hezbollah</div></div>
+        <div class="anode" style="left:73%;top:24%;width:34px;height:34px;background:rgba(204,34,34,.15);border:1.5px solid #aa3333;font-size:9px">HMS<div class="anode-lbl">Hamas</div></div>
+        <div class="anode" style="left:50%;top:72%;width:32px;height:32px;background:rgba(204,34,34,.12);border:1.5px solid #883333;font-size:9px">HTH<div class="anode-lbl">Houthis</div></div>
+        <div class="anode" style="left:16%;top:54%;width:30px;height:30px;background:rgba(40,60,100,.3);border:1.5px solid #3a5070;color:#8090aa;font-size:9px">IDF<div class="anode-lbl">Israel</div></div>
+        <div class="anode" style="left:85%;top:54%;width:30px;height:30px;background:rgba(40,60,100,.3);border:1.5px solid #3a5070;color:#8090aa;font-size:9px">US<div class="anode-lbl">USA</div></div>
+        <div style="position:absolute;bottom:8px;left:10px;font-size:9px;color:#2a3a55;display:flex;gap:12px">
+          <span style="color:#cc2222">— Allied</span><span>-- Opposed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="panel anal-panel">
+    <div class="ph"><span class="ph-t d">Analytics</span><span class="ph-b">Last 7 days</span></div>
+    <div class="pb" style="display:flex;flex-direction:column;justify-content:center">
+      <div class="chart-lbl">Incidents by Zone</div>
+      <div class="bars-wrap">
+        <div class="bc"><div class="bf" style="height:92%;background:#ff3333"></div><div class="blbl">Gaza</div></div>
+        <div class="bc"><div class="bf" style="height:76%;background:#ff3333"></div><div class="blbl">Lebanon</div></div>
+        <div class="bc"><div class="bf" style="height:58%;background:#ff8c00"></div><div class="blbl">Iran</div></div>
+        <div class="bc"><div class="bf" style="height:44%;background:#ffc400"></div><div class="blbl">Yemen</div></div>
+        <div class="bc"><div class="bf" style="height:33%;background:#3a5070"></div><div class="blbl">Syria</div></div>
+        <div class="bc"><div class="bf" style="height:22%;background:#3a5070"></div><div class="blbl">Iraq</div></div>
+      </div>
+      <div class="chart-lbl" style="margin-top:14px">7-Day Severity Trend</div>
+      <svg width="100%" height="50" style="display:block;padding:0 14px">
+        <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff3333" stop-opacity=".3"/><stop offset="100%" stop-color="#ff3333" stop-opacity="0"/></linearGradient></defs>
+        <polygon points="0,46 35,40 75,42 115,28 155,32 195,16 235,8 235,50 0,50" fill="url(#tg)"/>
+        <polyline points="0,46 35,40 75,42 115,28 155,32 195,16 235,8" fill="none" stroke="#ff3333" stroke-width="2"/>
+        <circle cx="235" cy="8" r="4" fill="#ff3333"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- DAILY BRIEF -->
+  <div class="panel brief-panel">
+    <div class="ph"><span class="ph-t">Daily Intelligence Brief</span><span class="ph-b">AI · 06:00 UTC</span></div>
+    <div class="pb" style="padding:14px;overflow-y:auto">
+      <div style="margin-bottom:14px">
+        <div class="bhed">Top Developments</div>
+        <div class="bbody">Israel escalated airstrikes in Lebanon following Hezbollah rocket fire. Iran nuclear talks collapsed after IAEA inspection refusal. Houthi Red Sea operations resumed after 48h pause.</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div class="bhed">What To Watch</div>
+        <div class="bbody">IDF ground operation in Rafah · Iran IAEA deadline · US carrier group near Hormuz</div>
+      </div>
+      <div class="bdl" onclick="this.textContent='↓ Downloading...'">↓ Download PDF Brief</div>
+    </div>
+  </div>
+
+  <!-- WEEKLY TREND -->
+  <div class="panel trend-panel">
+    <div class="ph"><span class="ph-t">Weekly Trend</span><span class="ph-b">vs last 7 days</span></div>
+    <div class="pb" style="padding:0;overflow-y:auto">
+      <div class="trow"><div class="tz">Gaza</div><div class="ta" style="color:#ff3333">↑</div><div class="tbar"><div class="tbf" style="width:90%;background:#ff3333"></div></div><div class="tpct" style="color:#ff3333">+34%</div></div>
+      <div class="trow"><div class="tz">Lebanon</div><div class="ta" style="color:#ff3333">↑</div><div class="tbar"><div class="tbf" style="width:70%;background:#ff8c00"></div></div><div class="tpct" style="color:#ff8c00">+21%</div></div>
+      <div class="trow"><div class="tz">Iran</div><div class="ta" style="color:#ff8c00">↑</div><div class="tbar"><div class="tbf" style="width:55%;background:#ff8c00"></div></div><div class="tpct" style="color:#ff8c00">+18%</div></div>
+      <div class="trow"><div class="tz">Yemen</div><div class="ta" style="color:#4a5a78">→</div><div class="tbar"><div class="tbf" style="width:30%;background:#3a5070"></div></div><div class="tpct" style="color:#4a5a78">+2%</div></div>
+      <div class="trow"><div class="tz">Syria</div><div class="ta" style="color:#44cc77">↓</div><div class="tbar"><div class="tbf" style="width:20%;background:#44cc77"></div></div><div class="tpct" style="color:#44cc77">-12%</div></div>
+    </div>
+  </div>
+
+  <!-- SOURCE MONITOR -->
+  <div class="panel src-panel">
+    <div class="ph"><span class="ph-t d">Source Health</span><span class="ph-b">40 feeds</span></div>
+    <div class="pb" style="padding:0;overflow-y:auto">
+      <div class="src-sum">
+        <div class="src-cnt"><div class="sdot" style="background:#44cc77"></div><span style="color:#8090aa">38 Active</span></div>
+        <div class="src-cnt"><div class="sdot" style="background:#ffc400"></div><span style="color:#8090aa">1 Slow</span></div>
+        <div class="src-cnt"><div class="sdot" style="background:#ff3333"></div><span style="color:#8090aa">1 Down</span></div>
+      </div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Al Jazeera</span><span class="st" style="color:#3a5070">1m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">BBC</span><span class="st" style="color:#3a5070">2m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Reuters</span><span class="st" style="color:#3a5070">1m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Times of Israel</span><span class="st" style="color:#3a5070">3m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Haaretz</span><span class="st" style="color:#3a5070">4m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#ffc400"></div><span class="sn">IRNA</span><span class="st" style="color:#ffc400">18m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#ff3333;box-shadow:0 0 5px #ff3333"></div><span class="sn">Press TV</span><span class="st" style="color:#ff3333;font-weight:700">DOWN</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">AP</span><span class="st" style="color:#3a5070">2m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Al Monitor</span><span class="st" style="color:#3a5070">5m ago</span></div>
+      <div class="si"><div class="sdot" style="background:#44cc77"></div><span class="sn">Middle East Eye</span><span class="st" style="color:#3a5070">6m ago</span></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-// --- State ---
-let allArticles = [];
-let activeSeverity = '';
-let activeCountry = '';
-let heatLayer = null;
-let map = null;
-
-// --- Helpers ---
-function timeAgo(dateStr) {
-  const diff = (Date.now() - new Date(dateStr)) / 1000;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-  return Math.floor(diff/86400) + 'd ago';
-}
-function sevColor(label) {
-  return { critical:'#ef4444', high:'#ea580c', medium:'#eab308', low:'#22c55e' }[label] || '#6b7280';
-}
-function sevBadgeClass(label) {
-  return 'badge-' + (label || 'medium');
-}
-function formatSeverity(sev, label) {
-  const l = label || 'medium';
-  const s = (sev || 5).toFixed(1);
-  return `${l.toUpperCase()} ${s}`;
-}
-
-// --- Tab switching ---
-function switchTab(name, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-
-  const mapWrap = document.getElementById('persistent-map-wrap');
-  const contentArea = document.getElementById('tab-content-area');
-  const legend = document.getElementById('map-legend-el');
-
-  if (name === 'map') {
-    // Full-height map, no content area
-    mapWrap.classList.remove('map-compact');
-    if (contentArea) contentArea.classList.remove('active');
-    if (legend) legend.style.display = '';
-  } else {
-    // Compact map at top, content below
-    mapWrap.classList.add('map-compact');
-    if (contentArea) contentArea.classList.add('active');
-    if (legend) legend.style.display = 'none';
-    // Show the right panel
-    const panel = document.getElementById('panel-' + name);
-    if (panel) panel.classList.add('active');
-  }
-
-  setTimeout(() => map && map.invalidateSize(), 120);
-  updateMapForTab(name);
-
-  if (name === 'timeline') loadTimeline();
-  if (name === 'related') loadRelated();
-  if (name === 'analytics') loadAnalytics();
-  if (name === 'analysis') loadAnalysisTab();
-  if (name === 'bias') loadBiasTab();
-
-  // Mobile: close sidebar
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar && window.innerWidth <= 768) sidebar.classList.remove('mob-open');
-}
-
-function updateMapForTab(name) {
-  const label = document.getElementById('map-ctx-label');
-  if (!map) return;
-
-  // Clear existing pulse markers
-  if (window._markerLayer) { map.removeLayer(window._markerLayer); window._markerLayer = null; }
-
-  if (name === 'map' || name === 'analytics' || name === 'analysis' || name === 'bias') {
-    if (label) label.textContent = 'All recent events';
-    loadHeatmap(); // full reload
-    return;
-  }
-
-  if (name === 'timeline') {
-    if (label) label.textContent = 'Major timeline events';
-    // Show only is_timeline_event articles on the map
-    const events = allArticles.filter(a => a.is_timeline_event);
-    _plotArticlesOnMap(events);
-    return;
-  }
-
-  if (name === 'related') {
-    if (label) label.textContent = 'Related clusters';
-    const recent = allArticles.slice(0, 30);
-    _plotArticlesOnMap(recent);
-    return;
-  }
-}
-
-function _plotArticlesOnMap(arts) {
-  if (!map || !arts || !arts.length) return;
-  const GEO = window._GEO_MAP || GEO_MAP;
-  const markers = [];
-  const seen = {};
-  arts.forEach(a => {
-    [...(a.actors||[]), ...(a.countries||[])].forEach(key => {
-      if (seen[key]) return;
-      const coords = GEO && GEO[key];
-      if (!coords) return;
-      seen[key] = true;
-      const color = a.severity_label === 'critical' ? '#ef4444'
-                  : a.severity_label === 'high' ? '#ea580c'
-                  : a.severity_label === 'medium' ? '#eab308' : '#22c55e';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.4);box-shadow:0 0 8px ${color}"></div>`,
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
-      });
-      markers.push(L.marker(coords, { icon }).bindPopup(`<b>${key}</b><br>${a.title || ''}`));
-    });
-  });
-  if (markers.length) {
-    const layer = L.layerGroup(markers);
-    layer.addTo(map);
-    window._markerLayer = layer;
-  }
-}
-
-// --- Feed rendering ---
-function renderFeed(articles) {
-  const container = document.getElementById('feed-list');
-  if (!articles.length) { container.innerHTML = '<div class="empty-feed">No articles found</div>'; return; }
-  container.innerHTML = articles.slice(0, 60).map(a => `
-    <div class="feed-item" onclick="window.open('${a.link}','_blank')">
-      <div class="feed-inner">
-        <div class="sev-bar" style="background:${sevColor(a.severity_label)}"></div>
-        <div style="flex:1;min-width:0">
-          <div class="feed-meta">
-            <span class="feed-source">${a.source} &middot; ${timeAgo(a.published_at)}</span>
-            <span class="feed-badge ${sevBadgeClass(a.severity_label)}">${formatSeverity(a.severity, a.severity_label)}</span>
-          </div>
-          <div class="feed-title">${a.title}</div>
-          <div class="feed-tags">${(a.actors||[]).slice(0,4).join(' &middot; ')}</div>
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function filterSeverity(el, value) {
-  activeSeverity = value;
-  applyFilter();
-  syncMobFilters();
-}
-
-function filterCountry(el, value) {
-  activeCountry = value;
-  applyFilter();
-  syncMobFilters();
-}
-
-function applyFilter() {
-  let filtered = allArticles;
-  if (activeSeverity) filtered = filtered.filter(a => a.severity_label === activeSeverity);
-  if (activeCountry) filtered = filtered.filter(a =>
-    (a.actors||[]).includes(activeCountry) || (a.countries||[]).includes(activeCountry)
-  );
-  renderFeed(filtered);
-}
-
-// --- Load news ---
-async function loadNews() {
-  try {
-    const res = await fetch('/api/news?limit=100');
-    const data = await res.json();
-    allArticles = data.articles || [];
-    applyFilter();
-    updateTopStats();
-  } catch(e) { console.error('Failed to load news', e); }
-}
-
-function updateTopStats() {
-  fetch('/api/analytics').then(r=>r.json()).then(data => {
-    document.getElementById('stat-severity').textContent = data.avgSeverity || '—';
-    document.getElementById('stat-incidents').textContent = data.totalArticles || '—';
-    const crit = (data.bySeverity||[]).find(s=>s.severity_label==='critical');
-    document.getElementById('stat-critical').textContent = crit ? crit.count : '0';
-    document.getElementById('stat-analyzed').textContent = data.totalArticles || '—';
-    document.getElementById('bs-severity').textContent = data.avgSeverity || '—';
-    document.getElementById('bs-incidents').textContent = data.totalArticles || '—';
-    document.getElementById('bs-critical').textContent = crit ? crit.count : '0';
-    document.getElementById('bs-analyzed').textContent = data.totalArticles || '—';
-    document.getElementById('bs-countries').textContent = (data.countryAvg||[]).length + ' countries';
-    if (data.activeSourceCount !== undefined) {
-      document.getElementById('stat-sources').textContent = data.activeSourceCount + '/' + (data.totalFeedCount||50);
-      document.getElementById('bs-sources').textContent = data.activeSourceCount + '/' + (data.totalFeedCount||50);
+// FILTER FEED
+function filterFeed(sev) {
+  document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('on'); });
+  event.target.classList.add('on');
+  document.querySelectorAll('#feed .fi').forEach(function(item) {
+    if (sev === 'all') {
+      item.style.display = 'block';
+    } else {
+      item.style.display = item.dataset.sev === sev ? 'block' : 'none';
     }
-  }).catch(()=>{});
-}
-
-// --- Map interactive helpers ---
-const GEO = {
-  Iran:        { lat: 32.4,  lng: 53.7 },
-  Israel:      { lat: 31.0,  lng: 35.0 },
-  Gaza:        { lat: 31.4,  lng: 34.3 },
-  Palestine:   { lat: 31.9,  lng: 35.2 },
-  Lebanon:     { lat: 33.9,  lng: 35.5 },
-  Yemen:       { lat: 15.6,  lng: 48.5 },
-  Syria:       { lat: 34.8,  lng: 38.9 },
-  Iraq:        { lat: 33.2,  lng: 43.7 },
-  'Saudi Arabia': { lat: 23.9, lng: 45.1 },
-  Jordan:      { lat: 30.6,  lng: 36.7 },
-  Egypt:       { lat: 26.8,  lng: 30.8 },
-  Turkey:      { lat: 38.9,  lng: 35.2 },
-  UAE:         { lat: 23.4,  lng: 53.8 },
-  Qatar:       { lat: 25.3,  lng: 51.2 },
-  Hezbollah:   { lat: 33.5,  lng: 35.4 },
-  Hamas:       { lat: 31.4,  lng: 34.3 },
-  Houthis:     { lat: 15.4,  lng: 44.2 },
-  IRGC:        { lat: 35.7,  lng: 51.4 },
-  IDF:         { lat: 32.1,  lng: 34.9 },
-  US:          { lat: 24.5,  lng: 55.0 },
-  Russia:      { lat: 55.8,  lng: 37.6 },
-};
-let mapMarkers = [];
-let selectedMapKey = null;
-
-function _tAgo(d) {
-  const m = Math.floor((Date.now() - new Date(d)) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return m + 'm ago';
-  const h = Math.floor(m/60);
-  if (h < 24) return h + 'h ago';
-  return Math.floor(h/24) + 'd ago';
-}
-function _mSz(s) { return s>=9?18:s>=7?14:s>=5?10:7; }
-function _sCls(s) { return s>=8?'critical':s>=6?'high':s>=4?'medium':'low'; }
-function _clearMarkers() { mapMarkers.forEach(m=>map.removeLayer(m)); mapMarkers=[]; }
-
-function filterByMapKey(key) {
-  selectedMapKey = key;
-  activeCountry = key;
-  document.querySelectorAll('.country-chip').forEach(c => {
-    const v = c.getAttribute('onclick')||'';
-    c.classList.toggle('active', v.includes("'" + key + "'"));
-  });
-  applyFilter();
-  const bar = document.getElementById('map-selected-bar');
-  bar.style.display = 'block';
-  bar.innerHTML = 'Filtering: <strong>' + key + '</strong>' +
-    '<button onclick="clearMapSelection()">&#x2715; Clear</button>';
-}
-
-function clearMapSelection() {
-  selectedMapKey = null; activeCountry = '';
-  document.querySelectorAll('.country-chip').forEach(c=>c.classList.remove('active'));
-  document.querySelector('.country-chip').classList.add('active'); // re-activate All
-  applyFilter();
-  document.getElementById('map-selected-bar').style.display = 'none';
-}
-
-// --- Map ---
-function initMap() {
-  map = L.map('map', { center: [28, 43], zoom: 5 });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19
-  }).addTo(map);
-  // Ensure map renders correctly after mobile layout settles
-  setTimeout(() => map.invalidateSize(), 100);
-  setTimeout(() => map.invalidateSize(), 500);
-  loadHeatmap();
-}
-
-async function loadHeatmap() {
-  try {
-    const [hRes, nRes] = await Promise.all([fetch('/api/heatmap'), fetch('/api/news?limit=300')]);
-    const hData = await hRes.json();
-    const nData = await nRes.json();
-    const articles = nData.articles || nData || [];
-
-    if (heatLayer) map.removeLayer(heatLayer);
-    if (hData.points && hData.points.length > 0) {
-      heatLayer = L.heatLayer(hData.points, {
-        radius: 40, blur: 30, maxZoom: 7, max: 1.0,
-        gradient: { 0.0:'#000033', 0.2:'#003366', 0.4:'#006600',
-                    0.55:'#cccc00', 0.7:'#ff6600', 0.85:'#ff2200', 1.0:'#ffffff' }
-      }).addTo(map);
-    }
-
-    // Build location buckets from articles
-    const buckets = {};
-    articles.forEach(a => {
-      const keys = [...(a.countries||[]), ...(a.actors||[])];
-      for (const k of keys) {
-        if (GEO[k]) { if (!buckets[k]) buckets[k]=[]; buckets[k].push(a); break; }
-      }
-    });
-
-    _clearMarkers();
-    Object.entries(buckets).forEach(([key, arts]) => {
-      const geo = GEO[key];
-      const maxSev = Math.max(...arts.map(a => a.severity||0));
-      const sc = _sCls(maxSev);
-      const sz = _mSz(maxSev);
-      const jlat = geo.lat + (Math.random()-.5)*.4;
-      const jlng = geo.lng + (Math.random()-.5)*.4;
-
-      const icon = L.divIcon({
-        className: '',
-        html: '<div class="pulse-dot ' + sc + '" style="width:'+sz+'px;height:'+sz+'px"></div>',
-        iconSize: [sz,sz], iconAnchor: [sz/2,sz/2]
-      });
-
-      const hl = arts.slice(0,5).map(a =>
-        '<li>' + (a.title||'').substring(0,70) + ((a.title||'').length>70?'\u2026':'') +
-        ' <span style="color:#888;font-size:10px">' + _tAgo(a.published_at) + '</span></li>'
-      ).join('');
-
-      const pop = '<div class="mp">' +
-        '<div class="mph">' + key +
-        ' <span class="mps ' + sc + '">' + maxSev.toFixed(1) + '</span>' +
-        ' <span style="color:#888;font-size:10px">' + arts.length + ' articles</span></div>' +
-        '<ul>' + hl + '</ul>' +
-        '<button class="mpb" onclick="filterByMapKey(\'' + key + '\')" >&#x1F50D; Filter feed &#x2192; ' + key + '</button>' +
-        '</div>';
-
-      const marker = L.marker([jlat,jlng], {icon})
-        .bindPopup(pop, {maxWidth:280})
-        .on('mouseover', function(){ this.openPopup(); });
-      marker.addTo(map);
-      mapMarkers.push(marker);
-    });
-  } catch(e) { console.error('loadHeatmap error:', e); }
-}
-
-// --- Timeline ---
-async function loadTimeline() {
-  const container = document.getElementById('timeline-list');
-  try {
-    const res = await fetch('/api/timeline');
-    const data = await res.json();
-    const events = data.events || [];
-    if (!events.length) { container.innerHTML = '<div class="loading">No timeline events yet — AI is analyzing articles...</div>'; return; }
-    container.innerHTML = events.map(e => `
-      <div class="tl-item">
-        <div class="tl-dot" style="background:${sevColor(e.severity_label)};box-shadow:0 0 8px ${sevColor(e.severity_label)}"></div>
-        <div class="tl-time">${new Date(e.published_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} UTC</div>
-        <div class="tl-title">${e.title}</div>
-        ${e.timeline_summary ? `<div class="tl-desc">${e.timeline_summary}</div>` : `<div class="tl-desc">${e.summary||''}</div>`}
-        <div class="tl-tags">
-          ${(e.actors||[]).map(a=>`<span class="tl-tag">${a}</span>`).join('')}
-          <span class="tl-sev" style="background:${sevColor(e.severity_label)}22;color:${sevColor(e.severity_label)}">SEV ${(e.severity||5).toFixed(1)}</span>
-        </div>
-      </div>`).join('');
-  } catch(e) { container.innerHTML = '<div class="loading">Failed to load timeline</div>'; }
-}
-
-// --- Related ---
-async function loadRelated() {
-  const container = document.getElementById('related-list');
-  try {
-    const res = await fetch('/api/clusters');
-    const data = await res.json();
-    const clusters = data.clusters || [];
-    if (!clusters.length) { container.innerHTML = '<div class="loading">No article clusters yet — check back soon...</div>'; return; }
-    container.innerHTML = clusters.map(cl => `
-      <div class="related-group">
-        <div class="related-group-header">
-          <div class="related-group-title">&#x1F517; ${cl.title}</div>
-          <span class="related-count">${cl.article_count} articles</span>
-          <span class="related-badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)">${cl.connection_type.replace('_',' ')}</span>
-        </div>
-        <div class="related-articles">
-          ${(cl.articles||[]).map(a=>`
-            <div class="related-article">
-              <div class="rel-source">${a.source}<br><span style="color:#374151">${timeAgo(a.published_at)}</span></div>
-              <div>
-                <div class="rel-title">${a.title}</div>
-                <div class="rel-link" onclick="window.open('${a.link}','_blank')">&rarr; Read article</div>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>`).join('');
-  } catch(e) { container.innerHTML = '<div class="loading">Failed to load related articles</div>'; }
-}
-
-// --- Analytics ---
-async function loadAnalytics() {
-  const container = document.getElementById('analytics-content');
-  try {
-    const res = await fetch('/api/analytics');
-    const data = await res.json();
-    const maxSev = Math.max(...(data.countryAvg||[{avg_severity:10}]).map(c=>c.avg_severity), 1);
-    const maxActor = Math.max(...(data.topActors||[{count:1}]).map(a=>a.count), 1);
-    const severityColors = { critical:'#ef4444', high:'#ea580c', medium:'#eab308', low:'#22c55e' };
-
-    // Build donut
-    const total = (data.bySeverity||[]).reduce((s,b)=>s+b.count,0)||1;
-    let pct = 0;
-    const donutSegments = (data.bySeverity||[]).map(b => {
-      const p = (b.count/total)*100;
-      const seg = `${severityColors[b.severity_label]||'#6b7280'} ${pct}% ${pct+p}%`;
-      pct += p;
-      return seg;
-    });
-
-    container.innerHTML = `
-      <div class="analytics-card">
-        <div class="ac-title">Severity by Country (24h avg)</div>
-        ${(data.countryAvg||[]).slice(0,8).map(c=>`
-          <div class="bar-row">
-            <span class="bar-label">${c.country}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${(c.avg_severity/maxSev*100).toFixed(0)}%;background:${c.avg_severity>=8?'#ef4444':c.avg_severity>=6?'#ea580c':c.avg_severity>=4?'#eab308':'#22c55e'}"></div></div>
-            <span class="bar-val" style="color:${c.avg_severity>=8?'#ef4444':c.avg_severity>=6?'#ea580c':c.avg_severity>=4?'#eab308':'#22c55e'}">${c.avg_severity}</span>
-          </div>`).join('')}
-      </div>
-      <div class="analytics-card">
-        <div class="ac-title">Incident Breakdown</div>
-        <div class="donut-wrap">
-          <div class="donut" style="background:conic-gradient(${donutSegments.join(',')})"></div>
-          <div class="donut-legend">
-            ${(data.bySeverity||[]).map(b=>`
-              <div class="donut-row">
-                <div class="donut-dot" style="background:${severityColors[b.severity_label]||'#6b7280'}"></div>
-                ${b.severity_label} &mdash; ${b.count}
-              </div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="analytics-card full">
-        <div class="ac-title">Severity Trend &mdash; Last 7 Days</div>
-        <div class="trend-row">
-          ${(data.trend||[]).map(t=>{
-            const h = Math.max(10, (t.avg_severity/10)*100);
-            const c = t.avg_severity>=8?'#ef4444':t.avg_severity>=6?'#ea580c':t.avg_severity>=4?'#eab308':'#22c55e';
-            return `<div class="trend-bar" style="height:${h}%;background:${c}"></div>`;
-          }).join('')}
-        </div>
-        <div class="trend-labels">
-          ${(data.trend||[]).map(t=>`<span class="trend-lbl">${new Date(t.day).toLocaleDateString('en-GB',{weekday:'short'})}</span>`).join('')}
-        </div>
-      </div>
-      <div class="analytics-card">
-        <div class="ac-title">Top Actors (Mentions)</div>
-        ${(data.topActors||[]).slice(0,6).map(a=>`
-          <div class="bar-row">
-            <span class="bar-label">${a.actor}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${(a.count/maxActor*100).toFixed(0)}%;background:#60a5fa"></div></div>
-            <span class="bar-val">${a.count}</span>
-          </div>`).join('')}
-      </div>
-      <div class="analytics-card">
-        <div class="ac-title">Severity Distribution</div>
-        ${(data.bySeverity||[]).map(b=>`
-          <div class="bar-row">
-            <span class="bar-label" style="text-transform:capitalize">${b.severity_label}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${(b.count/total*100).toFixed(0)}%;background:${severityColors[b.severity_label]||'#6b7280'}"></div></div>
-            <span class="bar-val">${b.count}</span>
-          </div>`).join('')}
-      </div>`;
-  } catch(e) { container.innerHTML = '<div class="loading" style="grid-column:1/-1">Failed to load analytics</div>'; }
-}
-
-// --- SSE live updates ---
-
-function _evtColor(t) {
-  const m = {strike:'#ff2a2a',rocket_fire:'#ff8c00',drone:'#ff6600',ground_op:'#e74c3c',
-              maritime:'#3498db',diplomatic:'#2ecc71',nuclear:'#9b59b6',sanctions:'#f39c12',
-              protest:'#1abc9c',other:'#95a5a6'};
-  return m[t]||'#95a5a6';
-}
-function _perspColor(p) {
-  const m = {
-    'Western':'#4a9eff','Israeli':'#9b59b6','Arab':'#2ecc71','Gulf Arab':'#27ae60',
-    'Iranian':'#e74c3c','Iran Opposition':'#e67e22','Russian':'#c0392b','Chinese':'#e74c3c',
-    'Turkish':'#f39c12','Kurdish':'#1abc9c','South Asian':'#16a085','US Military':'#2980b9',
-    'Defense':'#7f8c8d','UN/Neutral':'#bdc3c7'
-  };
-  return m[p]||'#7f8c8d';
-}
-function _card(title, body) {
-  return '<div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:8px;padding:14px">' +
-    '<div style="font-size:11px;font-weight:700;color:#4af;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">' + title + '</div>' +
-    body + '</div>';
-}
-
-async function loadAnalysisTab() {
-  const el = document.getElementById('analysis-content');
-  el.innerHTML = '<div class="loading">Analyzing...</div>';
-  try {
-    const res = await fetch('/api/analysis');
-    const d = await res.json();
-
-    const zonesHtml = (d.hotZones||[]).map(z => {
-      const w = Math.min(Math.round(z.count / (d.totalAnalyzed||1) * 100 * 3), 100);
-      const colors = {critical:'#ff2a2a',high:'#ff8c00',medium:'#ffd700',low:'#00c853'};
-      const sc = z.avg_severity >= 8 ? 'critical' : z.avg_severity >= 6 ? 'high' : z.avg_severity >= 4 ? 'medium' : 'low';
-      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
-        '<div style="width:100px;font-size:12px;color:#aaa;flex-shrink:0">' + z.country + '</div>' +
-        '<div style="flex:1;background:#111;border-radius:4px;height:14px;overflow:hidden">' +
-          '<div style="width:' + w + '%;height:100%;background:' + (colors[sc]) + ';border-radius:4px"></div>' +
-        '</div>' +
-        '<div style="width:70px;text-align:right;font-size:11px;color:' + colors[sc] + '">' + z.count + ' &bull; sev ' + z.avg_severity + '</div>' +
-        '</div>';
-    }).join('') || '<div style="color:#555;font-size:12px">No data yet</div>';
-
-    const evtTotal = (d.eventTypeList||[]).reduce((s,e)=>s+e.count,0)||1;
-    const evtHtml = (d.eventTypeList||[]).slice(0,10).map(e => {
-      const w = Math.round(e.count/evtTotal*100);
-      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
-        '<div style="width:110px;font-size:11px;color:#aaa;flex-shrink:0;text-transform:capitalize">' + e.type.replace(/_/g,' ') + '</div>' +
-        '<div style="flex:1;background:#111;border-radius:3px;height:10px;overflow:hidden">' +
-          '<div style="width:' + w + '%;height:100%;background:' + _evtColor(e.type) + ';border-radius:3px"></div>' +
-        '</div>' +
-        '<div style="width:35px;text-align:right;font-size:11px;color:#888">' + e.count + '</div>' +
-        '</div>';
-    }).join('') || '<div style="color:#555;font-size:12px">No data yet</div>';
-
-    const pairsHtml = (d.actorPairs||[]).map(p =>
-      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a2a3a;font-size:12px">' +
-        '<span style="color:#aaa">' + p.pair + '</span>' +
-        '<span style="color:#4af;font-weight:600">' + p.count + ' co-mentions</span>' +
-      '</div>'
-    ).join('') || '<div style="color:#555;font-size:12px">No data yet</div>';
-
-    const srcHtml = (d.sourcesStats||[]).slice(0,25).map(s => {
-      const sc2 = s.avg_severity >= 8 ? '#ff2a2a' : s.avg_severity >= 6 ? '#ff8c00' : s.avg_severity >= 4 ? '#ffd700' : '#00c853';
-      const aiPct = s.count ? Math.round(s.ai_scored/s.count*100) : 0;
-      return '<tr style="border-bottom:1px solid #111">' +
-        '<td style="padding:5px 4px;font-size:11px;color:#ddd">' + s.name + '</td>' +
-        '<td style="padding:5px 4px;font-size:10px;color:' + _perspColor(s.perspective) + '">' + s.perspective + '</td>' +
-        '<td style="padding:5px 4px;font-size:11px;text-align:center;color:#4af">' + s.count + '</td>' +
-        '<td style="padding:5px 4px;font-size:11px;text-align:center;color:' + sc2 + '">' + s.avg_severity + '</td>' +
-        '<td style="padding:5px 4px;font-size:11px;text-align:center;color:#888">' + aiPct + '%</td>' +
-        '</tr>';
-    }).join('');
-
-    el.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        _card('Hot Zones (48h)', zonesHtml) +
-        _card('Event Type Breakdown', evtHtml) +
-      '</div>' +
-      _card('Actor Co-occurrence (top pairs in same article)', pairsHtml) +
-      '<div style="margin-top:14px">' +
-        _card('Source Coverage — ' + (d.totalAnalyzed||0) + ' articles &bull; ' + (d.aiCoverage||0) + '% AI scored',
-          '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
-          '<thead><tr style="color:#555;font-size:10px;text-transform:uppercase">' +
-          '<th style="text-align:left;padding:4px;border-bottom:1px solid #1a2a3a">Source</th>' +
-          '<th style="text-align:left;padding:4px;border-bottom:1px solid #1a2a3a">Perspective</th>' +
-          '<th style="text-align:center;padding:4px;border-bottom:1px solid #1a2a3a">Articles</th>' +
-          '<th style="text-align:center;padding:4px;border-bottom:1px solid #1a2a3a">Avg Sev</th>' +
-          '<th style="text-align:center;padding:4px;border-bottom:1px solid #1a2a3a">AI%</th>' +
-          '</tr></thead><tbody>' + srcHtml + '</tbody></table></div>'
-        ) +
-      '</div>';
-  } catch(e) { el.innerHTML = '<div class="loading">Failed to load analysis: ' + e.message + '</div>'; }
-}
-
-async function loadBiasTab() {
-  const el = document.getElementById('bias-content');
-  el.innerHTML = '<div class="loading">Analyzing source bias...</div>';
-  try {
-    const res = await fetch('/api/bias');
-    const d = await res.json();
-
-    const perspHtml = (d.perspectiveSummary||[]).map(p => {
-      const col = _perspColor(p.perspective);
-      const actors = (p.top_actors||[]).map(a =>
-        '<span style="background:' + col + '22;color:' + col + ';border:1px solid ' + col + '44;padding:2px 6px;border-radius:3px;font-size:10px;margin:2px;display:inline-block">' + a.actor + ' (' + a.count + ')</span>'
-      ).join('');
-      return '<div style="background:#0d1520;border:1px solid ' + col + '44;border-left:3px solid ' + col + ';border-radius:8px;padding:12px;min-width:180px;flex:1">' +
-        '<div style="font-size:13px;font-weight:700;color:' + col + '">' + p.perspective + '</div>' +
-        '<div style="font-size:11px;color:#888;margin:4px 0">' + p.sources + ' sources &bull; ' + p.articles + ' articles &bull; avg sev ' + p.avg_severity + '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:6px">' + actors + '</div>' +
-        '</div>';
-    }).join('');
-
-    const sourceCards = (d.sources||[]).map(s => {
-      const col = _perspColor(s.perspective);
-      const sc = s.avg_severity >= 8 ? '#ff2a2a' : s.avg_severity >= 6 ? '#ff8c00' : s.avg_severity >= 4 ? '#ffd700' : '#00c853';
-      const overHtml = (s.over_emphasized||[]).filter(o=>o.ratio>1.2).map(o =>
-        '<span title="' + o.ratio + 'x avg" style="background:rgba(255,140,0,.15);color:#ff8c00;border:1px solid #ff8c0044;padding:1px 5px;border-radius:3px;font-size:10px;margin:2px;display:inline-block">' + o.actor + ' \u00d7' + o.ratio + '</span>'
-      ).join('');
-      const topTags = (s.top_actors||[]).map(a =>
-        '<span style="background:' + col + '22;color:' + col + ';padding:1px 5px;border-radius:3px;font-size:10px;margin:2px;display:inline-block">' + a.actor + ' ' + a.pct + '%</span>'
-      ).join('');
-      return '<div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:8px;padding:12px;margin-bottom:10px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
-          '<div><div style="font-size:13px;font-weight:700;color:#ddd">' + s.name + '</div>' +
-          '<div style="font-size:10px;color:#888;margin-top:2px">' + s.region + ' &bull; <span style="color:' + col + '">' + s.perspective + '</span></div></div>' +
-          '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:' + sc + '">' + s.avg_severity + '</div>' +
-          '<div style="font-size:10px;color:#666">avg severity</div>' +
-          '<div style="font-size:11px;color:#4af;margin-top:2px">' + s.count + ' articles</div></div>' +
-        '</div>' +
-        (topTags ? '<div style="margin-bottom:6px"><div style="font-size:10px;color:#555;margin-bottom:3px">TOP ACTORS COVERED</div><div>' + topTags + '</div></div>' : '') +
-        (overHtml ? '<div><div style="font-size:10px;color:#ff8c00;margin-bottom:3px">OVER-EMPHASIS vs AVERAGE</div><div>' + overHtml + '</div></div>' : '') +
-        '</div>';
-    }).join('');
-
-    el.innerHTML =
-      '<div style="background:#0a0f1a;border:1px solid #1a2a3a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:11px;color:#888;line-height:1.6">' +
-        '<span style="color:#4af;font-weight:700">ABOUT BIAS SCORES</span> &mdash; ' +
-        'Emphasis ratios compare how often each source covers an actor vs. the network average. ' +
-        '\u00d72.0 means twice as much coverage as average. Data window: 48 hours.' +
-      '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:#4af;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Perspective Groups</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">' + perspHtml + '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:#4af;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Source Profiles (' + (d.sources||[]).length + ' active sources)</div>' +
-      sourceCards;
-  } catch(e) { el.innerHTML = '<div class="loading">Failed to load bias data: ' + e.message + '</div>'; }
-}
-
-
-function toggleSidebar() {
-  const sidebar = document.querySelector('.sidebar');
-  const toggle = document.getElementById('menuToggle');
-  const isOpen = sidebar.classList.contains('mob-open');
-  sidebar.classList.toggle('mob-open', !isOpen);
-  toggle.classList.toggle('open', !isOpen);
-}
-
-// Close sidebar when a tab is selected on mobile
-const _origSwitchTab = switchTab;
-function syncMobFilters() {
-  document.querySelectorAll('.sev-chip').forEach(c => {
-    const v = c.getAttribute('onclick') || '';
-    const m = v.match(/filterSeverity\(this,'([^']*)'\)/);
-    if (m) c.classList.toggle('active', m[1] === activeSeverity);
-  });
-  document.querySelectorAll('.country-chip').forEach(c => {
-    const v = c.getAttribute('onclick') || '';
-    const m = v.match(/filterCountry\(this,'([^']*)'\)/);
-    if (m) c.classList.toggle('active', (m[1] || '') === (activeCountry || ''));
   });
 }
 
-function connectSSE() {
-  const es = new EventSource('/events');
-  let _sseConnected = false;
-  es.onopen = () => {
-    _sseConnected = true;
-    document.getElementById('live-dot') && (document.getElementById('live-dot').style.background = '#22c55e');
-  };
-  es.onmessage = e => {
-    let data;
-    try { data = JSON.parse(e.data); } catch { return; }
-    if (data.type === 'connected') return;
-
-    if (data.type === 'new_articles' && data.count > 0) {
-      _showLiveToast(`+${data.count} new article${data.count > 1 ? 's' : ''}`);
-      loadNews();
-      loadHeatmap();
-      // Update active panel
-      const active = document.querySelector('.tab.active');
-      const tab = active ? active.dataset.tab || active.getAttribute('onclick')?.match(/'(\w+)'/)?.[1] : null;
-      if (tab === 'timeline') loadTimeline && loadTimeline();
-      if (tab === 'analytics') loadAnalysisTab && loadAnalysisTab();
-      if (tab === 'bias') loadBiasTab && loadBiasTab();
-    }
-    if (data.type === 'article_scored') {
-      loadNews();
-    }
-    if (data.type === 'stats_update') {
-      updateTopStats && updateTopStats();
-    }
-  };
-  es.onerror = () => {
-    document.getElementById('live-dot') && (document.getElementById('live-dot').style.background = '#ef4444');
-    setTimeout(connectSSE, 5000);
-  };
-}
-
-function _showLiveToast(msg) {
-  let t = document.getElementById('live-toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'live-toast';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#16a34a;color:#fff;padding:6px 14px;border-radius:5px;font-size:11px;font-family:monospace;font-weight:700;letter-spacing:1px;z-index:9999;opacity:1;transition:opacity 1s';
-  clearTimeout(t._hide);
-  t._hide = setTimeout(() => { t.style.opacity = '0'; }, 2500);
-}
-
-// --- Boot ---
-initMap();
-loadNews();
-connectSSE();
-setInterval(loadNews, 60000);
-setInterval(updateTopStats, 60000);
-setInterval(loadHeatmap, 120000);
-
-// ── Iran Conflict Gauge ──────────────────────────────────────────────────────
-function _gaugeColor(score) {
-  if (score < 25) return '#4ade80';
-  if (score < 50) return '#facc15';
-  if (score < 75) return '#fb923c';
-  return '#f87171';
-}
-function _gaugeLabelClass(score) {
-  if (score < 25) return 'glbl-green';
-  if (score < 50) return 'glbl-yellow';
-  if (score < 75) return 'glbl-orange';
-  return 'glbl-red';
-}
-function _setGaugeNeedle(score) {
-  const rot = score * 1.8 - 90;
-  const needle = document.getElementById('gauge-needle');
-  const dot = document.getElementById('gauge-center-dot');
-  const num = document.getElementById('gauge-score-num');
-  const color = _gaugeColor(score);
-  if (needle) {
-    needle.setAttribute('transform', `rotate(${rot}, 100, 105)`);
-    needle.setAttribute('stroke', color);
-  }
-  if (dot) dot.setAttribute('fill', color);
-  if (num) num.textContent = score;
-}
-
-async function loadIranGauge() {
-  try {
-    const data = await fetch('/api/iran-gauge').then(r => r.json());
-    const score = typeof data.score === 'number' ? Math.min(100, Math.max(0, data.score)) : 50;
-    _setGaugeNeedle(score);
-
-    const labelEl = document.getElementById('gauge-label');
-    if (labelEl) {
-      labelEl.textContent = data.label || 'UNKNOWN';
-      labelEl.className = _gaugeLabelClass(score);
-    }
-
-    const reas = document.getElementById('gauge-reasoning');
-    if (reas) reas.textContent = data.reasoning || '';
-
-    const sigs = document.getElementById('gauge-signals');
-    if (sigs) {
-      sigs.innerHTML = (data.signals || []).map(s => `<span class="g-signal">${s}</span>`).join('');
-    }
-
-    const footer = document.getElementById('gauge-footer');
-    if (footer) {
-      const arts = data.articlesAnalyzed || 0;
-      const mins = data.updatedAt ? Math.max(0, Math.round((Date.now() - new Date(data.updatedAt)) / 60000)) : null;
-      const age = mins === null ? '' : mins < 1 ? ' · just now' : ` · ${mins}m ago`;
-      footer.textContent = `${arts} Iran articles analyzed${age} · refreshes every 30 min`;
-    }
-  } catch(e) {
-    console.warn('Iran gauge error:', e);
-    const labelEl = document.getElementById('gauge-label');
-    if (labelEl) labelEl.textContent = 'ANALYSIS UNAVAILABLE';
+// HIGHLIGHT COUNTRY ROW
+function highlightCountry(name) {
+  document.querySelectorAll('.crow').forEach(function(r) {
+    r.style.background = '';
+  });
+  var row = document.getElementById('row-' + name);
+  if (row) {
+    row.style.background = '#1a1030';
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
-
-async function refreshIranGauge() {
-  const badge = document.querySelector('.gauge-ai-badge');
-  if (badge) badge.textContent = '... LOADING';
-  // Add cache-bust param to force server re-analysis (server still uses its own TTL)
-  try {
-    await fetch('/api/iran-gauge?t=' + Date.now()).then(r => r.json());
-    await loadIranGauge();
-  } finally {
-    if (badge) badge.innerHTML = '&#x21BB; AI LIVE';
-  }
-}
-
-// Load on start, refresh every 30 min
-loadIranGauge();
-setInterval(loadIranGauge, 30 * 60 * 1000);
-
 </script>
 </body>
 </html>
